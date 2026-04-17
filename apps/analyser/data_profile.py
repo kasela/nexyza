@@ -8,9 +8,21 @@ TIME_TYPES = {"date", "datetime", "year", "month", "time_cat"}
 MEASURE_TYPES = {"metric", "currency", "ratio", "percentage", "count"}
 DIMENSION_TYPES = {"category", "high_card", "date", "datetime", "year", "month", "time_cat"}
 
+# Regex that matches canonical names which are row identifiers, not business metrics.
+# Matches: ends with _id, _key, _no, _num, _number, _code, _ref, _uuid, _guid,
+# or the whole name is exactly "id", "key", "code", "no", "num", "uuid", "guid".
+_ID_PATTERN = re.compile(
+    r"(?:^|_)(?:id|key|no|num|number|code|ref|uuid|guid)$"
+)
+
 
 def _canon(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", str(text or "").strip().lower()).strip("_")
+
+
+def _is_id_column(canon: str, is_numeric: bool) -> bool:
+    """True when a numeric column is a row identifier, not a business metric."""
+    return is_numeric and bool(_ID_PATTERN.search(canon))
 
 
 def _top_values(col: Dict[str, Any], limit: int = 5) -> List[str]:
@@ -63,6 +75,8 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
             confidence -= 0.10
         confidence = max(0.1, min(0.98, confidence))
 
+        canon = _canon(name)
+
         role = "other"
         if semantic in TIME_TYPES:
             role = "time"
@@ -71,8 +85,12 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         elif semantic in {"category", "high_card"}:
             role = "dimension"
 
+        # Override: numeric columns that look like row identifiers are not metrics.
+        if role == "measure" and _is_id_column(canon, is_numeric):
+            role = "identifier"
+            semantic = "identifier"
+
         hints = []
-        canon = _canon(name)
         if any(k in canon for k in ["target", "budget", "plan"]):
             hints.append("target")
         if any(k in canon for k in ["forecast", "projection"]):
@@ -110,6 +128,7 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         })
 
     measures = [c["name"] for c in column_profiles if c["role"] == "measure"]
+    identifier_columns = [c["name"] for c in column_profiles if c["role"] == "identifier"]
     dimensions = [c["name"] for c in column_profiles if c["role"] == "dimension" and c.get("unique_count", 2) > 1]
     time_columns = [c["name"] for c in column_profiles if c["role"] == "time"]
     combined_date_names = [c.get("display_name") or c.get("name") for c in combined_dates if c.get("display_name") or c.get("name")]
@@ -128,6 +147,7 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         "duplicate_column_names": duplicate_column_names,
         "column_profiles": column_profiles,
         "measures": measures,
+        "identifier_columns": identifier_columns,
         "dimensions": dimensions,
         "time_columns": combined_date_names + [c for c in time_columns if c not in combined_date_names],
         "target_columns": target_columns,
@@ -143,6 +163,9 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
     single_value_dims = [c["name"] for c in column_profiles if c["role"] == "dimension" and c.get("unique_count", 2) <= 1]
     if single_value_dims:
         profile["quality_flags"].append(f"single_value_dimensions_excluded:{','.join(single_value_dims)}")
+
+    if identifier_columns:
+        profile["quality_flags"].append(f"identifier_columns_excluded:{','.join(identifier_columns)}")
 
     if not measures:
         profile["quality_flags"].append("no_measures_detected")
