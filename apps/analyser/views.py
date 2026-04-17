@@ -911,7 +911,8 @@ def power_dashboard(request, pk):
     rows_preview = []
     table_columns = []
     try:
-        df = load_dataframe(upload_obj)
+        df = load_dataframe(upload_obj.file.path, upload_obj.file_type,
+                            sheet_name=upload_obj.active_sheet or None)
         if df is not None:
             filters = _infer_dashboard_filters(df)
             preview = df.head(500).copy()
