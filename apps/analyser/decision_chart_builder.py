@@ -347,17 +347,18 @@ def build_decision_chart_plan(profile: Dict[str, Any], target_count: int = 8) ->
     metric_gap = next((m for m in derived_available if 'gap' in m or 'minus' in m or 'variance' in m), '')
     if settings.get('allow_scatter') and len(measures) >= 2 and actual and secondary and actual != secondary and len(plan) < target_count and archetype not in {'target_vs_actual'}:
         add(
-            title=f"{title_for(actual)} vs {title_for(secondary)}",
+            title=f"{title_for(actual)} vs {title_for(secondary)}{(f' by {dim}') if dim else ''}",
             chart_type='scatter',
             x_axis=actual,
             y_axis=secondary,
             aggregation='mean',
-            group_by='',
-            color='violet',
+            group_by=dim or '',
+            color='multi' if dim else 'violet',
             size='md',
             x_label=title_for(actual),
             y_label=title_for(secondary),
-            insight='Relationship view between the two main measures.',
+            insight=f'Relationship between {title_for(actual)} and {title_for(secondary)}'
+                    + (f', coloured by {dim}' if dim else '') + '.',
             is_time_series=False,
             combined_date_key='',
         )

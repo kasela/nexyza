@@ -107,6 +107,64 @@ def build_recommendations(profile: Dict[str, Any], screening: Dict[str, Any], an
     if target and primary_dim and primary_measure and str(target).lower() != 'none':
         chart_priority.append({'type': 'variance_bar', 'x': primary_dim, 'y': primary_measure, 'benchmark': target, 'purpose': 'Target gap'})
 
+    # Data-driven actionable insights derived from per-dimension stats
+    actionable_insights: List[Dict[str, str]] = []
+    business_ins = profile.get('business_insights') or {}
+    kpi_sum = business_ins.get('kpi_summary') or {}
+    top_rev    = kpi_sum.get('top_revenue_entity')
+    bottom_rev = kpi_sum.get('bottom_revenue_entity')
+    top_margin = kpi_sum.get('highest_margin_entity')
+    high_marg_pct = kpi_sum.get('highest_margin_pct')
+    low_margin = kpi_sum.get('lowest_margin_entity')
+    low_marg_pct = kpi_sum.get('lowest_margin_pct')
+
+    if top_rev and top_margin:
+        if top_rev != top_margin:
+            actionable_insights.append({
+                'action': f'Shift focus toward {top_margin}',
+                'rationale': (
+                    f'{top_margin} leads in profit margin ({high_marg_pct}%) '
+                    f'while {top_rev} drives volume. Improving {top_margin} mix could '
+                    f'enhance overall profitability.'
+                ),
+                'priority': 'high',
+                'evidence': f'Top revenue: {top_rev} | Highest margin: {top_margin} ({high_marg_pct}%)',
+            })
+        else:
+            actionable_insights.append({
+                'action': f'Protect and grow {top_rev}',
+                'rationale': (
+                    f'{top_rev} leads in both revenue and margin ({high_marg_pct}%) — '
+                    f'it is the core profit engine and should be defended against volume erosion.'
+                ),
+                'priority': 'high',
+                'evidence': f'Top performer by revenue and margin: {top_rev}',
+            })
+    if low_margin and low_margin != top_margin:
+        actionable_insights.append({
+            'action': f'Review {low_margin} profitability',
+            'rationale': (
+                f'{low_margin} has the lowest margin ({low_marg_pct}%). '
+                f'Investigate pricing, cost structure, or product mix to improve returns.'
+            ),
+            'priority': 'medium',
+            'evidence': f'Lowest margin: {low_margin} at {low_marg_pct}%',
+        })
+    if bottom_rev and bottom_rev != low_margin:
+        actionable_insights.append({
+            'action': f'Investigate {bottom_rev} underperformance',
+            'rationale': (
+                f'{bottom_rev} is the weakest revenue contributor. '
+                f'Determine whether this is a resource, market, or execution issue.'
+            ),
+            'priority': 'low',
+            'evidence': f'Lowest revenue segment: {bottom_rev}',
+        })
+    # Incorporate narrative points as additional insight items
+    for point in (business_ins.get('narrative_points') or [])[:3]:
+        if point and not any(p.get('rationale', '').startswith(point[:20]) for p in actionable_insights):
+            actionable_insights.append({'action': 'Insight', 'rationale': point, 'priority': 'info', 'evidence': ''})
+
     return {
         'priorities': priorities[:3],
         'main_measures': measures[:4],
@@ -119,4 +177,5 @@ def build_recommendations(profile: Dict[str, Any], screening: Dict[str, Any], an
         'chart_priority': chart_priority,
         'business_context_note': context_note,
         'dataset_summary': screening.get('dataset_summary') or '',
+        'actionable_insights': actionable_insights,
     }
