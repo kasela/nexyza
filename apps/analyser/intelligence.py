@@ -451,6 +451,26 @@ def sort_categorical_series(labels: list) -> list:
     if all(ym_re.match(l) for l in label_lower):
         return sorted(range(len(labels)), key=lambda i: labels[i])
 
+    # MonthName-YYYY or MonthName YYYY (e.g. "April-2025", "Apr 2025", "Apr-2025")
+    mname_re = re.compile(r'^([a-z]+)[\s\-](\d{4})$')
+    if all(mname_re.match(l) for l in label_lower):
+        def _mname_key(i):
+            m = mname_re.match(label_lower[i])
+            mon_str, yr = m.group(1), m.group(2)
+            mon_num = MONTH_NAMES.get(mon_str) or MONTH_NAMES.get(mon_str[:3]) or 0
+            return (int(yr), mon_num)
+        return sorted(range(len(labels)), key=_mname_key)
+
+    # YYYY-MonthName or YYYY-Mon (e.g. "2025-April", "2025-Apr")
+    ym_name_re = re.compile(r'^(\d{4})[\s\-]([a-z]+)$')
+    if all(ym_name_re.match(l) for l in label_lower):
+        def _ym_name_key(i):
+            m = ym_name_re.match(label_lower[i])
+            yr, mon_str = m.group(1), m.group(2)
+            mon_num = MONTH_NAMES.get(mon_str) or MONTH_NAMES.get(mon_str[:3]) or 0
+            return (int(yr), mon_num)
+        return sorted(range(len(labels)), key=_ym_name_key)
+
     return list(range(len(labels)))  # keep original order
 
 
