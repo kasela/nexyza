@@ -386,8 +386,20 @@ def _time_series(upload, chart, combo_key: str) -> dict:
                     labels  = [grouped[combo_key].tolist()[i] for i in idxs]
                     vals    = [_sf(grouped[y].tolist()[i] * mult) for i in idxs]
 
-                # Add target overlay if configured
+                # Add target overlay if configured; also honour extra_measures from AI specs
                 target_col = cjson.get('target_column') or ''
+                extra_measures_ts = [m for m in (cjson.get('extra_measures') or []) if m and m != y]
+                # If target_column not set but extra_measures has a target, use it
+                if not target_col and extra_measures_ts:
+                    target_col = extra_measures_ts[0]
+                # Build additional series: target first, then remaining extra_measures
+                overlay_cols = []
+                if target_col:
+                    overlay_cols.append(target_col)
+                for m in extra_measures_ts:
+                    if m != target_col and m not in overlay_cols:
+                        overlay_cols.append(m)
+
                 datasets = [{
                     'label': y_lbl, 'data': vals,
                     'backgroundColor': _palette(chart.color, 0.75)[0],
@@ -397,22 +409,30 @@ def _time_series(upload, chart, combo_key: str) -> dict:
                     'pointRadius': min(4, max(2, 14 - len(vals))),
                     'pointHoverRadius': 6,
                 }]
-                if target_col and target_col in df.columns:
+                OVERLAY_COLORS = [
+                    ('rgba(251,191,36,1)', 'rgba(251,191,36,0.15)'),
+                    ('rgba(16,185,129,1)', 'rgba(16,185,129,0.15)'),
+                    ('rgba(244,63,94,1)',  'rgba(244,63,94,0.15)'),
+                ]
+                for oi, oc in enumerate(overlay_cols):
+                    if oc not in df.columns:
+                        continue
                     df_work2 = df.copy()
-                    df_work2[target_col] = pd.to_numeric(df_work2[target_col], errors='coerce')
+                    df_work2[oc] = pd.to_numeric(df_work2[oc], errors='coerce')
                     if year_col:
-                        tg = df_work2.groupby([year_col, combo_key])[target_col].agg('sum').reset_index()
+                        tg = df_work2.groupby([year_col, combo_key])[oc].agg('sum').reset_index()
                         tg['_sort'] = tg.apply(lambda r: (int(r[year_col]) if pd.notna(r[year_col]) else 9999)*100, axis=1)
                         tg = tg.sort_values('_sort')
-                        t_vals = [_sf(v) for v in tg[target_col].tolist()]
+                        t_vals = [_sf(v) for v in tg[oc].tolist()]
                     else:
-                        tg = df_work2.groupby(combo_key)[target_col].agg('sum').reset_index()
+                        tg = df_work2.groupby(combo_key)[oc].agg('sum').reset_index()
                         idxs2 = _sort_cat(tg[combo_key].tolist())
-                        t_vals = [_sf(tg[target_col].tolist()[i]) for i in idxs2]
+                        t_vals = [_sf(tg[oc].tolist()[i]) for i in idxs2]
+                    bc, bgc = OVERLAY_COLORS[oi % len(OVERLAY_COLORS)]
                     datasets.append({
-                        'label': target_col, 'data': t_vals,
-                        'borderColor': 'rgba(251,191,36,1)', 'backgroundColor': 'rgba(0,0,0,0)',
-                        'borderWidth': 1.5, 'borderDash': [5,3], 'tension': 0.4,
+                        'label': oc, 'data': t_vals,
+                        'borderColor': bc, 'backgroundColor': bgc,
+                        'borderWidth': 1.5, 'borderDash': [5, 3], 'tension': 0.4,
                         'pointRadius': min(3, max(2, 14 - len(t_vals))), 'pointHoverRadius': 5,
                         'fill': False,
                     })
@@ -447,19 +467,44 @@ def _time_series(upload, chart, combo_key: str) -> dict:
         vals   = [_sf(v) for v in grouped['value'].tolist()]
         ctype  = chart.chart_type
 
+        datasets = [{
+            'label':           y_lbl,
+            'data':            vals,
+            'backgroundColor': _palette(chart.color, 0.75)[0],
+            'borderColor':     _palette(chart.color, 1.0)[0],
+            'borderWidth':     2.5,
+            'tension':         0.4,
+            'fill':            ctype in ('area',),
+            'pointRadius':     min(4, max(2, 14 - len(vals))),
+            'pointHoverRadius': 6,
+        }]
+
+        # Target / extra_measures overlays for combo-date time series
+        target_col_c = cjson.get('target_column') or ''
+        extra_ts_c   = [m for m in (cjson.get('extra_measures') or []) if m and m != y]
+        if not target_col_c and extra_ts_c:
+            target_col_c = extra_ts_c[0]
+        overlay_cols_c = ([target_col_c] if target_col_c else []) + [m for m in extra_ts_c if m != target_col_c]
+        OV_COLORS = [('rgba(251,191,36,1)', 'rgba(251,191,36,0.15)'), ('rgba(16,185,129,1)', 'rgba(16,185,129,0.15)')]
+        for oi, oc in enumerate(overlay_cols_c):
+            try:
+                tg = build_time_series_df(df, combo, oc, 'sum')
+                if not tg.empty:
+                    t_vals = [_sf(v) for v in tg['value'].tolist()]
+                    bc, bgc = OV_COLORS[oi % len(OV_COLORS)]
+                    datasets.append({
+                        'label': oc, 'data': t_vals,
+                        'borderColor': bc, 'backgroundColor': bgc,
+                        'borderWidth': 1.5, 'borderDash': [5, 3], 'tension': 0.4,
+                        'pointRadius': min(3, max(2, 14 - len(t_vals))), 'pointHoverRadius': 5,
+                        'fill': False,
+                    })
+            except Exception:
+                pass
+
         return {
             'labels': labels,
-            'datasets': [{
-                'label':           y_lbl,
-                'data':            vals,
-                'backgroundColor': _palette(chart.color, 0.75)[0],
-                'borderColor':     _palette(chart.color, 1.0)[0],
-                'borderWidth':     2.5,
-                'tension':         0.4,
-                'fill':            ctype in ('area',),
-                'pointRadius':     min(4, max(2, 14 - len(vals))),
-                'pointHoverRadius': 6,
-            }],
+            'datasets': datasets,
             'chart_type': 'line' if ctype in ('line','area','rolling_line','cumulative_line') else 'bar',
             'x_label':   cjson.get('x_label', combo_key),
             'y_label':   y_lbl,
