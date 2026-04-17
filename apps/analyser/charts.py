@@ -1800,16 +1800,17 @@ def _rule_based(upload) -> list:
     # These add coverage for derived metrics not in heuristic_plan
     # ════════════════════════════════════════════════════════════════════
     dim = role_dim
+    _dim_label = dim.replace('_', ' ').title() if dim else 'Segment'
     if dim:
         # Achievement % ranked bar — most critical view for target_vs_actual
         if 'achievement_pct' in available_dm:
             _make(
-                'Achievement % by Branch', 'horizontal_bar',
+                f'Achievement % by {_dim_label}', 'horizontal_bar',
                 x=dim, y='achievement_pct', agg='mean',
                 color='emerald', size='lg',
                 x_label=dm_labels.get('achievement_pct', 'Achievement %'),
                 y_label=dim,
-                insight='Best-to-worst attainment ranking across branches',
+                insight=f'Best-to-worst attainment ranking across {_dim_label.lower()} segments',
                 extra={
                     'derived_metric_key': 'achievement_pct',
                     'y_label': dm_labels.get('achievement_pct', 'Achievement %'),
@@ -1821,11 +1822,11 @@ def _rule_based(upload) -> list:
         # Variance to target bar
         if 'variance_to_target' in available_dm and role_actual and role_target:
             cfg = _make(
-                'Variance to Target by Branch', 'variance_bar',
+                f'Variance to Target by {_dim_label}', 'variance_bar',
                 x=dim, y=role_actual, agg='sum',
                 color='rose', size='full',
                 x_label=dim, y_label=role_actual,
-                insight='Branches above and below target — identify recovery priorities',
+                insight=f'{_dim_label} segments above and below target — identify recovery priorities',
                 extra={'target_column': role_target}
             )
             if cfg:
@@ -1836,69 +1837,86 @@ def _rule_based(upload) -> list:
         # Stock turnover ranking
         if 'stock_turnover' in available_dm:
             _make(
-                'Stock Turnover by Branch', 'horizontal_bar',
+                f'Stock Turnover by {_dim_label}', 'horizontal_bar',
                 x=dim, y='stock_turnover', agg='mean',
                 color='amber', size='lg',
                 x_label=dm_labels.get('stock_turnover', 'Stock Turnover'),
                 y_label=dim,
-                insight='Branches with lowest turnover are at risk of slow-moving stock',
+                insight=f'{_dim_label} segments with lowest turnover are at risk of slow-moving stock',
                 extra={'derived_metric_key': 'stock_turnover'}
+            )
+
+        # Profit Margin % ranking — key profitability view
+        if 'profit_margin_pct' in available_dm:
+            _make(
+                f'Profit Margin % by {_dim_label}', 'horizontal_bar',
+                x=dim, y='profit_margin_pct', agg='mean',
+                color='emerald', size='lg',
+                x_label=dm_labels.get('profit_margin_pct', 'Profit Margin %'),
+                y_label=dim,
+                insight=f'Which {_dim_label.lower()} segments are most profitable',
+                extra={'derived_metric_key': 'profit_margin_pct'}
             )
 
         # Cost efficiency (actual vs purchasing ratio)
         if 'actual_to_cost_ratio' in available_dm and role_purchasing:
             _make(
-                'Cost Efficiency by Branch', 'horizontal_bar',
+                f'Cost Efficiency by {_dim_label}', 'horizontal_bar',
                 x=dim, y='actual_to_cost_ratio', agg='mean',
                 color='cyan', size='lg',
-                x_label=dm_labels.get('actual_to_cost_ratio', 'Achievement / Purchasing'),
+                x_label=dm_labels.get('actual_to_cost_ratio', 'Revenue / Purchasing'),
                 y_label=dim,
-                insight='Revenue generated per unit of purchasing spend',
+                insight=f'Revenue generated per unit of purchasing spend across {_dim_label.lower()} segments',
                 extra={'derived_metric_key': 'actual_to_cost_ratio'}
             )
 
         # Stock movement (closing - opening)
         if 'stock_movement' in available_dm and role_open_stock and role_close_stock:
             _make(
-                'Stock Movement by Branch', 'bar',
+                f'Stock Movement by {_dim_label}', 'bar',
                 x=dim, y='stock_movement', agg='sum',
                 color='blue', size='lg',
                 x_label=dim,
                 y_label=dm_labels.get('stock_movement', 'Stock Movement'),
-                insight='Net stock change per branch — positive means stock built up',
+                insight=f'Net stock change per {_dim_label.lower()} — positive means stock built up',
                 extra={'derived_metric_key': 'stock_movement'}
             )
 
         # Opening vs Closing stock comparison
         if role_open_stock and role_close_stock:
             _make(
-                'Opening vs Closing Stock by Branch', 'bar',
+                f'Opening vs Closing Stock by {_dim_label}', 'bar',
                 x=dim, y=role_open_stock, agg='sum',
                 color='multi', size='full',
                 x_label=dim, y_label='Stock Value',
-                insight='Side-by-side stock position per branch',
+                insight=f'Side-by-side stock position per {_dim_label.lower()}',
                 extra={'extra_measures': [role_close_stock]}
             )
 
-        # Achievement contribution donut
+        # Contribution donut — title reflects the actual measure and dimension
         if role_actual:
+            _actual_label = role_actual.replace('_', ' ').title()
+            _dim_label = dim.replace('_', ' ').title()
             _make(
-                'Achievement Contribution by Branch', 'doughnut',
+                f'{_actual_label} by {_dim_label}',
+                'doughnut',
                 x=dim, y=role_actual, agg='sum',
                 color='multi', size='md',
                 x_label=dim, y_label=role_actual,
-                insight='Share of total achievement per branch'
+                insight=f'Share of total {_actual_label.lower()} per {_dim_label.lower()}'
             )
 
     # KPI cards from business_insights kpi_summary
     kpi_summary = business_ins.get('kpi_summary') or {}
     if role_actual:
-        _make('Total Achievement', 'kpi', y=role_actual, agg='sum',
+        _actual_label = role_actual.replace('_', ' ').title()
+        _make(f'Total {_actual_label}', 'kpi', y=role_actual, agg='sum',
               color='violet', size='sm',
-              insight=f'Total achievement: {kpi_summary.get("total_primary_measure", "")}',
+              insight=f'Total {_actual_label.lower()}: {kpi_summary.get("total_primary_measure", "")}',
               extra={'target_column': role_target} if role_target else None)
     if role_target:
-        _make('Total Target', 'kpi', y=role_target, agg='sum',
+        _target_label = role_target.replace('_', ' ').title()
+        _make(f'Total {_target_label}', 'kpi', y=role_target, agg='sum',
               color='blue', size='sm',
               insight=f'Total target: {kpi_summary.get("total_target", "")}')
     if 'achievement_pct' in available_dm:
@@ -1906,6 +1924,11 @@ def _rule_based(upload) -> list:
               color='emerald', size='sm',
               insight=f'Avg attainment {kpi_summary.get("best_achievement_pct", "")}% best, {kpi_summary.get("worst_achievement_pct", "")}% worst',
               extra={'derived_metric_key': 'achievement_pct'})
+    if 'profit_margin_pct' in available_dm:
+        _make('Profit Margin %', 'kpi', y='profit_margin_pct', agg='mean',
+              color='emerald', size='sm',
+              insight='Average profit margin across all records',
+              extra={'derived_metric_key': 'profit_margin_pct'})
     if 'variance_to_target' in available_dm:
         _make('Variance to Target', 'kpi', y='variance_to_target', agg='sum',
               color='rose', size='sm',
