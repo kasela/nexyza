@@ -458,6 +458,23 @@ def apply_ai_recommendations(upload, configs: list[dict]) -> list:
     VALID_COLOR = {c  for c,  _ in ChartConfig.COLOR_PALETTES}
     VALID_SIZE  = {s  for s,  _ in ChartConfig.SIZE_CHOICES}
 
+    # Build set of excluded single-value dimension names so we can sanitize titles
+    _quality_flags = (upload.analysis_result or {}).get('quality_flags') or []
+    _excluded_dims: set[str] = set()
+    for flag in _quality_flags:
+        if flag.startswith('single_value_dimensions_excluded:'):
+            _excluded_dims.update(flag.split(':', 1)[1].split(','))
+
+    def _sanitize_title(title: str, x_axis: str) -> str:
+        """Replace excluded dimension names in the title with the actual x_axis column."""
+        if not _excluded_dims or not title:
+            return title
+        for excl in _excluded_dims:
+            if excl and excl.lower() in title.lower() and x_axis and excl.lower() != x_axis.lower():
+                import re as _re
+                title = _re.sub(r'\b' + _re.escape(excl) + r'\b', x_axis, title, flags=_re.IGNORECASE)
+        return title
+
     created = []
     for i, cfg in enumerate(configs):
         ctype = cfg.get('chart_type', 'bar')
@@ -472,9 +489,12 @@ def apply_ai_recommendations(upload, configs: list[dict]) -> list:
             'combined_date_key': str(cfg.get('combined_date_key', '')),
         }
 
+        raw_title  = str(cfg.get('title', f'Chart {i+1}'))
+        clean_title = _sanitize_title(raw_title, str(cfg.get('x_axis', '')))
+
         chart = ChartConfig.objects.create(
             upload=upload,
-            title=str(cfg.get('title', f'Chart {i+1}'))[:150],
+            title=clean_title[:150],
             chart_type=ctype,
             x_axis=str(cfg.get('x_axis', ''))[:255],
             y_axis=str(cfg.get('y_axis', ''))[:255],
