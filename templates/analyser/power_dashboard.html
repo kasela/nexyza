@@ -103,6 +103,44 @@
 }
 .pb-freset:hover { background: rgba(76,140,255,.1); color: #7db5ff; }
 
+/* ═══ FILTER ROW 2 ════════════════════════════════════════════ */
+.pb-filters2 {
+  min-height: 42px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 20px; overflow-x: auto;
+  background: rgba(5,9,20,.98); border-bottom: 1px solid rgba(76,140,255,.08);
+}
+.pb-filters2::-webkit-scrollbar { height: 2px; }
+.pb-f2lbl { font-size:9px; letter-spacing:.2em; text-transform:uppercase; color:#243040; font-weight:700; white-space:nowrap; padding-right:4px; flex-shrink:0; }
+.pb-f2sel {
+  height:28px; padding:0 24px 0 8px; border-radius:6px;
+  background:rgba(10,16,30,.8); border:1px solid rgba(76,140,255,.1); color:#8aaccc;
+  font-size:11.5px; outline:none; cursor:pointer; transition:var(--t);
+  font-family:'Outfit',sans-serif; appearance:none; flex-shrink:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235a6e8c' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 6px center;
+  min-width:90px; max-width:150px;
+}
+.pb-f2sel:focus { border-color:rgba(76,140,255,.35); }
+.pb-f2inp {
+  height:28px; padding:0 10px; border-radius:6px;
+  background:rgba(10,16,30,.8); border:1px solid rgba(76,140,255,.1); color:#8aaccc;
+  font-size:11.5px; outline:none; transition:var(--t);
+  font-family:'Outfit',sans-serif; flex-shrink:0; width:130px;
+}
+.pb-f2inp:focus { border-color:rgba(76,140,255,.35); }
+.pb-f2inp::placeholder { color:#2a3a50; }
+.pb-f2sep { width:1px; height:16px; background:rgba(76,140,255,.08); margin:0 3px; flex-shrink:0; }
+.pb-f2btn {
+  height:28px; padding:0 12px; border-radius:6px; flex-shrink:0;
+  background:rgba(76,140,255,.12); border:1px solid rgba(76,140,255,.22);
+  color:#6a9ed0; font-size:11px; font-weight:700; cursor:pointer; transition:var(--t);
+  font-family:'Outfit',sans-serif;
+}
+.pb-f2btn:hover { background:rgba(76,140,255,.22); color:#90c0ff; }
+.pb-f2clr { background:transparent; border-color:rgba(76,140,255,.1); color:#2e4060; }
+.pb-f2clr:hover { background:rgba(76,140,255,.08); color:#6a8ab0; }
+
 /* ═══ CANVAS (middle scrollable zone) ════════════════════════ */
 .pb-canvas {
   flex: 1; min-height: 0;   /* ← critical: allows shrink inside flex column */
@@ -142,14 +180,14 @@
 }
 .pb-kpi:nth-child(1) .pb-korb{--ko:#4c8eff} .pb-kpi:nth-child(2) .pb-korb{--ko:#00cfb0}
 .pb-kpi:nth-child(3) .pb-korb{--ko:#f5a623} .pb-kpi:nth-child(4) .pb-korb{--ko:#9b6bfc}
-.pb-klbl { font-size: 9.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--mu); font-weight:700; margin-bottom:8px; }
-.pb-kval { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; color:#fff; line-height:1.05; margin-bottom:8px; letter-spacing:-.02em; word-break:break-all; }
+.pb-klbl { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--mu); font-weight:700; margin-bottom:10px; }
+.pb-kval { font-family:'Syne',sans-serif; font-size:clamp(24px,3vw,34px); font-weight:800; color:#fff; line-height:1.05; margin-bottom:10px; letter-spacing:-.02em; word-break:break-all; }
 .pb-kfoot { display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
-.pb-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; }
+.pb-badge { display:inline-flex; align-items:center; padding:3px 8px; border-radius:999px; font-size:11px; font-weight:700; }
 .pb-badge.g { background:rgba(0,207,176,.12); color:#2de8cf; border:1px solid rgba(0,207,176,.2); }
 .pb-badge.w { background:rgba(245,166,35,.12); color:#fbbf24; border:1px solid rgba(245,166,35,.2); }
 .pb-badge.b { background:rgba(240,98,98,.12); color:#f87171; border:1px solid rgba(240,98,98,.2); }
-.pb-kcap { font-size:11px; color:#3f5268; }
+.pb-kcap { font-size:11.5px; color:#3f5268; }
 
 /* ═══ CHART LAYOUT GRIDS ══════════════════════════════════════ */
 .pb-r2  { display:grid; grid-template-columns:1.3fr .7fr; gap:12px; }
@@ -167,21 +205,21 @@
   padding:11px 14px 9px; border-bottom:1px solid rgba(76,140,255,.06);
   flex-shrink:0; gap:10px;
 }
-.pb-chd-l h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:#cfe0ff; }
-.pb-chd-l p  { font-size:10.5px; color:#3f5268; margin-top:2px; }
+.pb-chd-l h3 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:#cfe0ff; letter-spacing:-.01em; }
+.pb-chd-l p  { font-size:11px; color:#3f5268; margin-top:3px; }
 .pb-chd-r { display:flex; align-items:center; gap:6px; flex-shrink:0; }
 .pb-tag {
   padding:2px 8px; border-radius:999px; border:1px solid var(--bd);
   font-size:9.5px; color:var(--mu); text-transform:uppercase; letter-spacing:.13em; white-space:nowrap;
 }
-/* Expand button */
+/* Expand / Download buttons */
 .pb-xbtn {
   display:flex; align-items:center; justify-content:center;
-  width:24px; height:24px; border-radius:6px; border:1px solid var(--bd);
+  width:26px; height:26px; border-radius:6px; border:1px solid var(--bd);
   background:transparent; color:var(--mu); cursor:pointer; transition:var(--t); flex-shrink:0;
 }
 .pb-xbtn:hover { border-color:var(--bdh); color:var(--tx); background:rgba(76,140,255,.1); }
-.pb-xbtn svg { width:11px; height:11px; pointer-events:none; }
+.pb-xbtn svg { width:12px; height:12px; pointer-events:none; }
 /* Card body — chart area */
 .pb-cbody { padding:12px 14px 14px; flex:1; position:relative; }
 /* Fixed heights for normal cards */
@@ -268,26 +306,26 @@
 .pb-tbl { width:100%; border-collapse:collapse; }
 .pb-tbl thead th {
   position:sticky; top:0; z-index:2;
-  text-align:left; padding:9px 14px;
-  font-size:9.5px; letter-spacing:.18em; text-transform:uppercase;
-  color:#2e4060; font-weight:700; background:#07101e;
-  border-bottom:1px solid rgba(76,140,255,.1);
+  text-align:left; padding:10px 16px;
+  font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+  color:#3a5070; font-weight:700; background:#07101e;
+  border-bottom:1px solid rgba(76,140,255,.12);
   white-space:nowrap; cursor:pointer; user-select:none;
 }
 .pb-tbl thead th:hover { color:#6a8ab0; }
-.pb-tbl thead th.sa::after { content:' ▲'; font-size:8px; }
-.pb-tbl thead th.sd::after { content:' ▼'; font-size:8px; }
+.pb-tbl thead th.sa::after { content:' ▲'; font-size:9px; }
+.pb-tbl thead th.sd::after { content:' ▼'; font-size:9px; }
 .pb-tbl thead th.computed { color:#4c8eff; }
-.pb-tbl tbody tr:hover td { background:rgba(76,140,255,.04); }
+.pb-tbl tbody tr:hover td { background:rgba(76,140,255,.05); }
 .pb-tbl td {
-  padding:8px 14px; font-size:12px; color:#9ab8d6;
+  padding:9px 16px; font-size:12.5px; color:#a8c8e8;
   border-bottom:1px solid rgba(76,140,255,.04);
   font-family:'DM Mono',monospace; white-space:nowrap;
-  max-width:240px; overflow:hidden; text-overflow:ellipsis;
+  max-width:260px; overflow:hidden; text-overflow:ellipsis;
 }
 .pb-tbl tr:last-child td { border-bottom:none; }
 .pb-tbl td.computed { color:#7db5ff; font-style:italic; }
-.pb-norows { padding:40px; text-align:center; color:var(--mu); font-size:13px; }
+.pb-norows { padding:48px; text-align:center; color:var(--mu); font-size:14px; }
 
 /* ═══ TAB BAR ═════════════════════════════════════════════════ */
 .pb-tabs {
@@ -364,6 +402,25 @@
     <button class="pb-freset" id="pb-reset">&#8635; Reset</button>
   </div>
 
+  <!-- FILTER ROW 2 — dynamic column filters -->
+  <div class="pb-filters2" id="pb-filters2">
+    <span class="pb-f2lbl">Filter by</span>
+    <select class="pb-f2sel" id="f2-col">
+      <option value="">— Column —</option>
+    </select>
+    <div class="pb-f2sep"></div>
+    <span class="pb-f2lbl">Value</span>
+    <input class="pb-f2inp" id="f2-val" type="text" placeholder="contains…">
+    <div class="pb-f2sep"></div>
+    <span class="pb-f2lbl">Min</span>
+    <input class="pb-f2inp" id="f2-min" type="number" placeholder="Min" style="width:80px;">
+    <span class="pb-f2lbl" style="padding:0 2px;">Max</span>
+    <input class="pb-f2inp" id="f2-max" type="number" placeholder="Max" style="width:80px;">
+    <div class="pb-f2sep"></div>
+    <button class="pb-f2btn" id="f2-apply">Apply</button>
+    <button class="pb-f2btn pb-f2clr" id="f2-clear">✕ Clear</button>
+  </div>
+
   <!-- CANVAS -->
   <div class="pb-canvas" id="pb-canvas">
 
@@ -395,14 +452,14 @@
         <article class="pb-card">
           <div class="pb-chd">
             <div class="pb-chd-l"><h3 id="ht0">Main Trend</h3><p>Primary time or performance view</p></div>
-            <div class="pb-chd-r"><span class="pb-tag" id="hy0">Trend</span><button class="pb-xbtn" data-cid="hc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="hy0">Trend</span><button class="pb-xbtn" title="Download PNG" onclick="pbDownload('hc0')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="pb-xbtn" title="Fullscreen" data-cid="hc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
           </div>
           <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="hc0"></canvas></div></div>
         </article>
         <article class="pb-card">
           <div class="pb-chd">
             <div class="pb-chd-l"><h3 id="ht1">Main Comparison</h3><p>Segment or ranking comparison</p></div>
-            <div class="pb-chd-r"><span class="pb-tag" id="hy1">Bar</span><button class="pb-xbtn" data-cid="hc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="hy1">Bar</span><button class="pb-xbtn" title="Download PNG" onclick="pbDownload('hc1')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="pb-xbtn" title="Fullscreen" data-cid="hc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
           </div>
           <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="hc1"></canvas></div></div>
         </article>
@@ -415,14 +472,14 @@
         <article class="pb-card">
           <div class="pb-chd">
             <div class="pb-chd-l"><h3 id="st1">Composition View</h3><p>Share, mix or contribution</p></div>
-            <div class="pb-chd-r"><span class="pb-tag" id="sy1">Mix</span><button class="pb-xbtn" data-cid="sc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="sy1">Mix</span><button class="pb-xbtn" title="Download PNG" onclick="pbDownload('sc1')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="pb-xbtn" title="Fullscreen" data-cid="sc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
           </div>
           <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="sc1"></canvas></div></div>
         </article>
         <article class="pb-card">
           <div class="pb-chd">
             <div class="pb-chd-l"><h3 id="st0">Performance View</h3><p>Attainment, gap or score</p></div>
-            <div class="pb-chd-r"><span class="pb-tag" id="sy0">Analysis</span><button class="pb-xbtn" data-cid="sc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="sy0">Analysis</span><button class="pb-xbtn" title="Download PNG" onclick="pbDownload('sc0')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button><button class="pb-xbtn" title="Fullscreen" data-cid="sc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
           </div>
           <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="sc0"></canvas></div></div>
         </article>
@@ -431,7 +488,7 @@
         <article class="pb-card">
           <div class="pb-chd">
             <div class="pb-chd-l"><h3>Supporting Charts</h3><p>Additional chart pack for deeper analysis</p></div>
-            <div class="pb-chd-r"><span class="pb-tag">Deep Dive</span><button class="pb-xbtn" data-cid="extras-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+            <div class="pb-chd-r"><span class="pb-tag">Deep Dive</span><button class="pb-xbtn" title="Fullscreen" data-cid="extras-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
           </div>
           <div class="pb-cbody pb-h260" id="pb-extras"></div>
         </article>
@@ -543,12 +600,12 @@ function mkOpts(h,compact){
     responsive:true,maintainAspectRatio:false,indexAxis:h?'y':'x',
     animation:{duration:500,easing:'easeOutQuart'},
     plugins:{
-      legend:{display:!compact,labels:{color:LG,boxWidth:9,usePointStyle:true,padding:11,font:{size:10.5,family:"'Outfit',sans-serif"}}},
-      tooltip:{enabled:true,backgroundColor:'#0d1525',borderColor:'rgba(76,140,255,.2)',borderWidth:1,titleColor:'#cfe0ff',bodyColor:'#5a6e8c',padding:10,cornerRadius:8,displayColors:true}
+      legend:{display:!compact,labels:{color:LG,boxWidth:10,usePointStyle:true,padding:12,font:{size:11.5,family:"'Outfit',sans-serif"}}},
+      tooltip:{enabled:true,backgroundColor:'#0d1525',borderColor:'rgba(76,140,255,.2)',borderWidth:1,titleColor:'#cfe0ff',titleFont:{size:12,family:"'Outfit',sans-serif"},bodyColor:'#8aaccc',bodyFont:{size:11.5,family:"'Outfit',sans-serif"},padding:11,cornerRadius:9,displayColors:true}
     },
     scales:{
-      x:{ticks:{color:TK,font:{size:10}},grid:{color:GR},border:{display:false}},
-      y:{ticks:{color:TK,font:{size:10}},grid:{color:GR},border:{display:false}}
+      x:{ticks:{color:TK,font:{size:11,family:"'Outfit',sans-serif"},maxRotation:35},grid:{color:GR},border:{display:false}},
+      y:{ticks:{color:TK,font:{size:11,family:"'Outfit',sans-serif"},callback:function(v){if(Math.abs(v)>=1e9)return(v/1e9).toFixed(1)+'B';if(Math.abs(v)>=1e6)return(v/1e6).toFixed(1)+'M';if(Math.abs(v)>=1e3)return(v/1e3).toFixed(0)+'k';return v;}},grid:{color:GR},border:{display:false}}
     }
   };
   if(h){o.scales.x.ticks.maxTicksLimit=6;}
@@ -795,9 +852,94 @@ window.addEventListener('resize',()=>{
   Object.values(CHS).forEach(c=>c?.resize());
 });
 
+/* ── download chart as PNG ───────────────────────────────── */
+function pbDownload(cid){
+  const ch=CHS[cid];
+  if(!ch)return;
+  const url=ch.toBase64Image('image/png',1);
+  const a=document.createElement('a');
+  const slot=SLOT_MAP[cid];
+  a.download=(slot&&slot.bundle&&slot.bundle.title?slot.bundle.title:'chart')+'.png';
+  a.href=url;a.click();
+}
+
+/* ── 2nd-row dynamic column filters ─────────────────────── */
+(function initF2(){
+  const colSel=document.getElementById('f2-col');
+  const valInp=document.getElementById('f2-val');
+  const minInp=document.getElementById('f2-min');
+  const maxInp=document.getElementById('f2-max');
+  const applyBtn=document.getElementById('f2-apply');
+  const clearBtn=document.getElementById('f2-clear');
+  if(!colSel)return;
+
+  // Populate column selector from actual data
+  ALL_COLS.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c;o.textContent=c;colSel.appendChild(o);
+  });
+
+  // When column changes, show/hide numeric range vs text filter
+  function updateMode(){
+    const col=colSel.value;
+    if(!col){minInp.style.display='none';maxInp.style.display='none';return;}
+    const sampleVals=ALL_ROWS.slice(0,10).map(r=>r[col]).filter(v=>v!=null&&v!=='');
+    const isNum=sampleVals.some(v=>!isNaN(parseFloat(v))&&isFinite(v));
+    minInp.style.display=isNum?'block':'none';
+    maxInp.style.display=isNum?'block':'none';
+    // show min/max labels
+    colSel.closest('.pb-filters2').querySelectorAll('.pb-f2lbl').forEach((l,i)=>{
+      if(i>=2)l.style.display=isNum?'':'none'; // hide min/max labels for text cols
+    });
+  }
+  colSel.addEventListener('change',updateMode);
+  updateMode();
+
+  function applyF2(){
+    const col=colSel.value;
+    const txt=valInp.value.trim().toLowerCase();
+    const mn=minInp.value!==''?parseFloat(minInp.value):null;
+    const mx=maxInp.value!==''?parseFloat(maxInp.value):null;
+    filtRows=ALL_ROWS.filter(r=>{
+      if(col){
+        const v=String(r[col]||'');
+        if(txt&&!v.toLowerCase().includes(txt))return false;
+        if(mn!==null&&!isNaN(mn)){const n=parseFloat(v);if(isNaN(n)||n<mn)return false;}
+        if(mx!==null&&!isNaN(mx)){const n=parseFloat(v);if(isNaN(n)||n>mx)return false;}
+      } else if(txt){
+        if(!ALL_COLS.some(c=>String(r[c]||'').toLowerCase().includes(txt)))return false;
+      }
+      return true;
+    });
+    if(sortCI>=0)doSort();else renderTbl(filtRows);
+    // highlight active filter row
+    document.getElementById('pb-filters2').style.borderBottomColor='rgba(76,140,255,.35)';
+  }
+
+  function clearF2(){
+    colSel.value='';valInp.value='';minInp.value='';maxInp.value='';
+    filtRows=[...ALL_ROWS];
+    if(sortCI>=0)doSort();else renderTbl(filtRows);
+    document.getElementById('pb-filters2').style.borderBottomColor='';
+    updateMode();
+  }
+
+  applyBtn.addEventListener('click',applyF2);
+  clearBtn.addEventListener('click',clearF2);
+  valInp.addEventListener('keydown',e=>{if(e.key==='Enter')applyF2();});
+})();
+
 /* ── reset filters ───────────────────────────────────────── */
 document.getElementById('pb-reset')?.addEventListener('click',()=>{
   document.querySelectorAll('.pb-fsel').forEach(s=>s.selectedIndex=0);
+  // also clear f2
+  const f2c=document.getElementById('f2-col');
+  const f2v=document.getElementById('f2-val');
+  const f2mn=document.getElementById('f2-min');
+  const f2mx=document.getElementById('f2-max');
+  if(f2c)f2c.value='';if(f2v)f2v.value='';if(f2mn)f2mn.value='';if(f2mx)f2mx.value='';
+  filtRows=[...ALL_ROWS];renderTbl(filtRows);
+  document.getElementById('pb-filters2').style.borderBottomColor='';
 });
 
 /* ── BOOT ────────────────────────────────────────────────── */
