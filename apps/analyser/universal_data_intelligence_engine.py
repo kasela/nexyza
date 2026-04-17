@@ -205,6 +205,15 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
 
     derived_names: List[str] = []
     _is_stats_export = any('stats_export' in f for f in (profile.get('quality_flags') or []))
+    # Skip pairwise fallback when real business-role derived metrics can be computed.
+    # Pairwise of e.g. "Total Revenue" × "Unit Cost" is cross-scale and meaningless;
+    # the role-specific metrics (profit_margin_pct, actual_to_cost_ratio, etc.) are better.
+    _has_role_derived = bool(
+        (actual and target) or
+        (actual and cost) or
+        (actual and profit) or
+        (opening and closing)
+    )
 
     for rec in source_records:
         item: Dict[str, Any] = {}
@@ -256,9 +265,10 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
                 metric_types['stock_turnover'] = 'ratio'
                 derived_names.append('stock_turnover')
 
-        # generic pairwise fallback — skip for Nexyza stats-export CSVs
-        # to avoid nonsensical "Nulls % minus Unique" derived metrics.
-        if not _is_stats_export:
+        # generic pairwise fallback — skip when real business-role metrics were
+        # computed (prevents cross-scale comparisons like "Revenue ÷ Unit Cost"),
+        # and skip entirely for stats-export CSVs.
+        if not _is_stats_export and not _has_role_derived:
             pair_pool = measures[:3]
             for idx, left in enumerate(pair_pool):
                 for right in pair_pool[idx + 1:]:
