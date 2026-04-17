@@ -1,0 +1,172 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% load datalens_extras %}
+{% block title %}{{ report.title }} — Report Builder{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:20px 20px 60px;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+    <div style="flex:1;">
+      <div style="font-size:11px;color:#475569;margin-bottom:4px;">
+        <a href="{% url 'reportbuilder:list' %}" style="color:#475569;text-decoration:none;">Reports</a> › <span style="color:#94a3b8;" id="report-title-display">{{ report.title }}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input type="text" id="report-title-input" value="{{ report.title }}"
+               style="color:#fff;font-size:1.3rem;font-weight:700;background:none;border:none;outline:none;min-width:200px;"
+               onblur="saveReportMeta()" onkeydown="if(event.key==='Enter')this.blur()">
+        <span style="color:#334155;font-size:12px;">· {{ sections|length }} section{{ sections|length|pluralize }}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button onclick="togglePublic()" id="share-btn"
+              style="padding:8px 14px;border-radius:10px;border:1px solid {% if report.is_public %}rgba(16,185,129,.3){% else %}rgba(255,255,255,.1){% endif %};background:{% if report.is_public %}rgba(16,185,129,.1){% else %}rgba(255,255,255,.04){% endif %};color:{% if report.is_public %}#34d399{% else %}#94a3b8{% endif %};font-size:12px;cursor:pointer;">
+        {% if report.is_public %}🔓 Public{% else %}🔒 Private{% endif %}
+      </button>
+      <a href="{% url 'reportbuilder:export_pdf' report.id %}" class="btn-secondary" style="font-size:12px;padding:8px 14px;">↓ PDF</a>
+      <button type="button" id="report-export-queue-btn" data-fmt="pdf" style="padding:8px 12px;border-radius:10px;border:1px solid rgba(59,130,246,.22);background:rgba(59,130,246,.08);color:#93c5fd;font-size:12px;cursor:pointer;">⏳ Queue PDF</button>
+      <button onclick="document.getElementById('schedule-modal').style.display='flex'"
+              style="padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:12px;cursor:pointer;">📅 Schedule</button>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:start;">
+
+    <!-- Add section panel -->
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(124,58,237,.12);border-radius:14px;padding:16px;position:sticky;top:76px;">
+      <p style="color:#a78bfa;font-weight:600;font-size:12px;margin:0 0 12px;text-transform:uppercase;letter-spacing:.06em;">Add Section</p>
+
+      <!-- Heading -->
+      <div style="margin-bottom:8px;">
+        <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 5px;">Content</p>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          {% for type_val, type_label in section_types %}
+          {% if type_val not in "chart stats table ai_insights" %}
+          <button onclick="quickAddSection('{{ type_val }}')"
+                  style="padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#94a3b8;font-size:12px;text-align:left;cursor:pointer;transition:.15s;"
+                  onmouseover="this.style.background='rgba(124,58,237,.1)';this.style.color='#a78bfa'"
+                  onmouseout="this.style.background='rgba(255,255,255,.03)';this.style.color='#94a3b8'">
+            {% if type_val == 'heading' %}🔤{% elif type_val == 'text' %}📄{% elif type_val == 'divider' %}─{% endif %} {{ type_label }}
+          </button>
+          {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Data sections -->
+      <div style="margin-top:10px;">
+        <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.04em;margin:0 0 5px;">Data</p>
+        <div style="margin-bottom:6px;">
+          <select id="add-chart-sel" style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#94a3b8;font-size:11px;outline:none;margin-bottom:4px;">
+            <option value="">— select chart —</option>
+            {% for c in all_charts %}
+            <option value="{{ c.id }}">{{ c.upload.original_name|truncatechars:20 }}: {{ c.title|truncatechars:22 }}</option>
+            {% endfor %}
+          </select>
+          <button onclick="addChartSection()" style="width:100%;padding:6px;border-radius:7px;border:1px solid rgba(59,130,246,.2);background:rgba(59,130,246,.06);color:#60a5fa;font-size:11px;cursor:pointer;">📊 Add Chart</button>
+        </div>
+        <div style="margin-bottom:6px;">
+          <select id="add-stats-sel" style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#94a3b8;font-size:11px;outline:none;margin-bottom:4px;">
+            <option value="">— select dataset —</option>
+            {% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name|truncatechars:35 }}</option>{% endfor %}
+          </select>
+          <button onclick="addDataSection('stats')" style="width:100%;padding:6px;border-radius:7px;border:1px solid rgba(16,185,129,.2);background:rgba(16,185,129,.06);color:#34d399;font-size:11px;cursor:pointer;">📊 Add Stats Table</button>
+        </div>
+        <div>
+          <select id="add-ai-sel" style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#94a3b8;font-size:11px;outline:none;margin-bottom:4px;">
+            <option value="">— select dataset —</option>
+            {% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name|truncatechars:35 }}</option>{% endfor %}
+          </select>
+          <button onclick="addDataSection('ai_insights')" style="width:100%;padding:6px;border-radius:7px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.06);color:#a78bfa;font-size:11px;cursor:pointer;">🤖 Add AI Insights</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span id="report-section-summary" style="font-size:11px;padding:4px 10px;border-radius:999px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.2);color:#c4b5fd;">0 sections</span>
+        <span id="report-last-action" style="font-size:11px;color:#64748b;">Ready</span>
+        <span id="report-schedule-pill" style="font-size:11px;padding:4px 10px;border-radius:999px;background:{% if active_schedule %}rgba(16,185,129,.12){% else %}rgba(255,255,255,.04){% endif %};border:1px solid {% if active_schedule %}rgba(16,185,129,.2){% else %}rgba(255,255,255,.08){% endif %};color:{% if active_schedule %}#86efac{% else %}#94a3b8{% endif %};">{% if active_schedule %}Scheduled · {{ active_schedule.frequency|title }}{% else %}Not scheduled{% endif %}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <input id="report-section-search" type="text" placeholder="Filter sections…" style="width:200px;max-width:60vw;padding:6px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;">
+        <button type="button" onclick="clearSectionFilter()" style="padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#94a3b8;font-size:11px;cursor:pointer;">Clear</button>
+      </div>
+    </div>
+
+    
+<div id="report-export-history-panel" style="margin-bottom:12px;background:rgba(255,255,255,.02);border:1px solid rgba(59,130,246,.14);border-radius:14px;padding:14px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+    <div>
+      <p style="margin:0;color:#dbeafe;font-size:12px;font-weight:700;letter-spacing:.02em;">Recent Report Exports</p>
+      <p style="margin:4px 0 0;color:#64748b;font-size:11px;">Queue exports, retry failed jobs, and download recent PDFs without leaving the builder.</p>
+    </div>
+    <button type="button" id="report-export-history-refresh" style="padding:7px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#94a3b8;font-size:11px;cursor:pointer;">Refresh</button>
+  </div>
+  <div id="report-export-history-list" style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+    <div style="font-size:12px;color:#64748b;">No report exports yet.</div>
+  </div>
+</div>
+
+<!-- Sections canvas -->
+    <div id="sections-canvas" style="display:flex;flex-direction:column;gap:10px;min-height:300px;">
+      {% if sections %}
+        {% for sec in sections %}
+          {% include 'reportbuilder/partials/section.html' with sec=sec report=report %}
+        {% endfor %}
+      {% else %}
+        <div id="empty-msg" style="text-align:center;padding:48px 20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);border-radius:14px;">
+          <p style="color:#475569;font-size:13px;">Add sections from the left panel to build your report.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script id="report-builder-config" type="application/json">{"reportPk":"{{ report.id|escapejs }}","csrfToken":"{{ csrf_token|escapejs }}","metaUrl":"{% url 'reportbuilder:meta' report.id %}","addSectionUrl":"{% url 'reportbuilder:add_section' report.id %}","togglePublicUrl":"{% url 'reportbuilder:toggle_public' report.id %}","scheduleUrl":"{% url 'reportbuilder:schedule' report.id %}","deleteSectionBase":"/reports/builder/{{ report.id }}/section/","updateSectionBase":"/reports/builder/{{ report.id }}/section/","publicBase":"/reports/view/","activeSchedule":{"frequency":"{% if active_schedule %}{{ active_schedule.frequency|escapejs }}{% endif %}","email":"{% if active_schedule %}{{ active_schedule.email|default:request.user.email|escapejs }}{% endif %}"}}</script>
+<script src="{% static 'js/reportbuilder/builder-state.js' %}"></script>
+<script src="{% static 'js/reportbuilder/builder-sections.js' %}"></script>
+<script src="{% static 'js/reportbuilder/builder-schedule.js' %}"></script>
+<script src="{% static 'js/reportbuilder/builder-page.js' %}"></script>
+
+<script id="report-export-config" type="application/json">{"queueUrl":"{% url 'reportbuilder:export_queue' report.id 'pdf' %}","historyUrl":"{% url 'reportbuilder:export_history' report.id %}","retryBaseUrl":"/reports/builder/export/retry/","downloadBaseUrl":"/reports/builder/export/download/","csrfToken":"{{ csrf_token|escapejs }}","reportPk":"{{ report.id|escapejs }}"}</script>
+<script src="{% static 'js/reportbuilder/export-history-panel.js' %}"></script>
+
+
+
+<!-- Schedule Modal -->
+<div id="schedule-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(4,2,12,.85);backdrop-filter:blur(8px);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e0b1e;border:1px solid rgba(124,58,237,.3);border-radius:20px;width:min(380px,92vw);padding:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <p style="color:#fff;font-weight:700;font-size:1rem;margin:0;">📅 Schedule Email Delivery</p>
+      <button onclick="document.getElementById('schedule-modal').style.display='none'"
+              style="background:none;border:none;color:#475569;cursor:pointer;font-size:18px;">✕</button>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="color:#64748b;font-size:11px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Frequency</label>
+      <select id="sched-freq" style="width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;">
+        <option value="daily">Daily</option>
+        <option value="weekly" selected>Weekly</option>
+        <option value="monthly">Monthly</option>
+      </select>
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="color:#64748b;font-size:11px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Deliver to (email)</label>
+      <input type="email" id="sched-email" placeholder="your@email.com"
+             style="width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;"
+             onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="document.getElementById('schedule-modal').style.display='none'"
+              style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#64748b;font-size:12px;cursor:pointer;">Cancel</button>
+      <button onclick="saveSchedule()" id="sched-save-btn"
+              style="flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Save Schedule</button>
+    </div>
+    <p id="sched-status" style="color:#34d399;font-size:11px;text-align:center;margin:10px 0 0;display:none;"></p>
+  </div>
+</div>
+
+
+
+{% endblock %}

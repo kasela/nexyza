@@ -1,0 +1,154 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Clean Data — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <div class="text-xs text-slate-500 mb-1"><a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">← {{ upload.original_name }}</a></div>
+      <h1 class="text-2xl font-bold text-white">Data Cleaning</h1>
+      <p class="text-slate-400 text-sm mt-0.5" id="row-status">{{ row_count }} rows remaining</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'cleaner:export' upload.id %}?fmt=csv" class="btn-secondary text-xs py-2 px-4">↓ Export Cleaned CSV</a>
+      <a href="{% url 'cleaner:export' upload.id %}?fmt=json" class="btn-secondary text-xs py-2 px-4">↓ JSON</a>
+      <form method="post" action="{% url 'cleaner:reset' upload.id %}" onsubmit="return confirm('Reset all cleaning operations?')">
+        {% csrf_token %}<button class="btn-secondary text-xs py-2 px-4 text-red-400 border-red-900/40">↺ Reset</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Operation palette -->
+    <div class="space-y-4">
+
+      <!-- Tab selector for op types -->
+      <div class="glass rounded-2xl p-5 space-y-4">
+        <div class="flex gap-1 p-1 glass-sm rounded-xl" id="op-tabs">
+          <button onclick="showOp('drop_nulls')"    id="op-tab-drop_nulls"    class="op-tab active flex-1 text-xs py-1.5 rounded-lg">Drop Nulls</button>
+          <button onclick="showOp('fill_nulls')"    id="op-tab-fill_nulls"    class="op-tab flex-1 text-xs py-1.5 rounded-lg">Fill Nulls</button>
+          <button onclick="showOp('find_replace')"  id="op-tab-find_replace"  class="op-tab flex-1 text-xs py-1.5 rounded-lg">Find/Replace</button>
+        </div>
+        <div class="flex gap-1 p-1 glass-sm rounded-xl">
+          <button onclick="showOp('rename_column')" id="op-tab-rename_column" class="op-tab flex-1 text-xs py-1.5 rounded-lg">Rename</button>
+          <button onclick="showOp('drop_column')"   id="op-tab-drop_column"   class="op-tab flex-1 text-xs py-1.5 rounded-lg">Drop Col</button>
+          <button onclick="showOp('filter_rows')"   id="op-tab-filter_rows"   class="op-tab flex-1 text-xs py-1.5 rounded-lg">Filter</button>
+        </div>
+        <div class="flex gap-1 p-1 glass-sm rounded-xl">
+          <button onclick="showOp('deduplicate')"   id="op-tab-deduplicate"   class="op-tab flex-1 text-xs py-1.5 rounded-lg">Dedup</button>
+          <button onclick="showOp('split_column')"  id="op-tab-split_column"  class="op-tab flex-1 text-xs py-1.5 rounded-lg">Split</button>
+          <button onclick="showOp('merge_columns')" id="op-tab-merge_columns" class="op-tab flex-1 text-xs py-1.5 rounded-lg">Merge</button>
+        </div>
+        <div class="flex gap-1 p-1 glass-sm rounded-xl">
+          <button onclick="showOp('strip_whitespace')" id="op-tab-strip_whitespace" class="op-tab flex-1 text-xs py-1.5 rounded-lg">Trim</button>
+          <button onclick="showOp('to_uppercase')"     id="op-tab-to_uppercase"     class="op-tab flex-1 text-xs py-1.5 rounded-lg">UPPER</button>
+          <button onclick="showOp('to_lowercase')"     id="op-tab-to_lowercase"     class="op-tab flex-1 text-xs py-1.5 rounded-lg">lower</button>
+          <button onclick="showOp('convert_numeric')"  id="op-tab-convert_numeric"  class="op-tab flex-1 text-xs py-1.5 rounded-lg">→ Num</button>
+        </div>
+
+        {% for op_type, label, fields_html in op_forms %}
+        <div id="op-{{ op_type }}" class="op-panel {% if not forloop.first %}hidden{% endif %}">
+          <form hx-post="{% url 'cleaner:apply_op' upload.id %}"
+                hx-target="#op-result"
+                hx-indicator="#op-spinner"
+                hx-swap="innerHTML">
+            {% csrf_token %}
+            <input type="hidden" name="op_type" value="{{ op_type }}">
+            <p class="text-slate-300 text-sm font-semibold mb-3">{{ label }}</p>
+            {{ fields_html }}
+            <button type="submit" class="btn-primary w-full justify-center py-2.5 mt-3 text-sm">Apply</button>
+          </form>
+        </div>
+        {% endfor %}
+
+        <div id="op-spinner" class="htmx-indicator flex justify-center py-3">
+          <div class="w-5 h-5 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <div id="op-result" class="mt-2"></div>
+      </div>
+
+      <!-- Operation log -->
+      {% if ops %}
+      <div class="glass rounded-2xl p-5">
+        <p class="text-white font-semibold text-sm mb-3">Applied Operations ({{ ops|length }})</p>
+        <div class="space-y-2 max-h-52 overflow-y-auto">
+          {% for op in ops %}
+          <div class="flex items-start gap-2 p-2.5 glass-sm rounded-lg">
+            <span class="text-violet-400 text-xs mt-0.5">{{ forloop.counter }}.</span>
+            <div class="flex-1 min-w-0">
+              <p class="text-white text-xs font-medium">{{ op.op_type|replace:"_"|title }}</p>
+              <p class="text-slate-500 text-xs truncate">{{ op.params }}</p>
+              {% if op.rows_before != op.rows_after %}
+              <p class="text-xs {% if op.rows_after < op.rows_before %}text-amber-400{% else %}text-green-400{% endif %}">
+                {{ op.rows_before }} → {{ op.rows_after }} rows
+              </p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Live preview -->
+    <div class="lg:col-span-2 glass rounded-2xl overflow-hidden" id="preview-panel">
+      <div class="px-5 py-4 border-b border-violet-900/30 flex items-center justify-between">
+        <p class="text-white font-semibold">Live Preview</p>
+        <p class="text-slate-500 text-xs" id="preview-rows">{{ row_count }} rows</p>
+      </div>
+      <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+        <table class="w-full text-xs font-mono" id="preview-table">
+          <thead class="sticky top-0" style="background:#1e1b2e">
+            <tr class="border-b border-violet-900/30">
+              {% for col in columns %}<th class="px-3 py-2.5 text-left text-slate-400 font-semibold whitespace-nowrap">
+                {{ col.name }}
+                {% if col.null_count > 0 %}<span class="text-amber-500 ml-1">*</span>{% endif %}
+              </th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% if upload.analysis_result.preview %}
+              {% for row in upload.analysis_result.preview.rows %}
+              <tr class="border-b border-slate-800/30 hover:bg-violet-900/10 transition-colors">
+                {% for cell in row %}<td class="px-3 py-2 text-slate-300 whitespace-nowrap max-w-[180px] truncate">{% if cell %}{{ cell }}{% else %}<span class="text-slate-700 italic">null</span>{% endif %}</td>{% endfor %}
+              </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .op-tab{color:#64748b;font-weight:500;transition:all 0.15s;}
+  .op-tab.active{background:rgba(124,58,237,0.25);color:#c4b5fd;}
+  .op-tab:hover:not(.active){color:#94a3b8;}
+</style>
+<script>
+function showOp(name) {
+  document.querySelectorAll('.op-panel').forEach(p => p.classList.add('hidden'));
+  document.querySelectorAll('.op-tab').forEach(t => t.classList.remove('active'));
+  const panel = document.getElementById('op-'+name);
+  const tab = document.getElementById('op-tab-'+name);
+  if (panel) panel.classList.remove('hidden');
+  if (tab) tab.classList.add('active');
+}
+// After HTMX swap update row count from response
+document.body.addEventListener('htmx:afterSwap', function(e) {
+  if (e.detail.target.id === 'op-result') {
+    const rowEl = document.getElementById('op-result').querySelector('[data-rows]');
+    if (rowEl) {
+      const r = rowEl.dataset.rows;
+      document.getElementById('preview-rows').textContent = r + ' rows';
+      document.getElementById('row-status').textContent = r + ' rows remaining';
+    }
+  }
+});
+</script>
+{% endblock %}

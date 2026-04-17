@@ -1,0 +1,16 @@
+{% extends 'public_base.html' %}
+{% load datalens_extras %}
+{% block title %}{{ report.title }}{% endblock %}
+{% block content %}
+<div style="max-width:800px;margin:0 auto;padding:40px 20px 80px;">
+  <div style="height:8px;background:{{ report.cover_color }};border-radius:999px;margin-bottom:32px;"></div>
+  <h1 style="color:#fff;font-size:2rem;font-weight:800;margin:0 0 8px;">{{ report.title }}</h1>
+  {% if report.description %}<p style="color:#64748b;font-size:14px;margin:0 0 32px;">{{ report.description }}</p>{% endif %}
+  <div style="display:flex;flex-direction:column;gap:20px;">
+  {% for sec in sections %}
+    {% include 'reportbuilder/partials/section.html' with sec=sec report=report readonly=True %}
+  {% endfor %}
+  </div>
+  <p style="color:#334155;font-size:11px;text-align:center;margin-top:40px;">Generated with Nexyza</p>
+</div>
+{% endblock %}

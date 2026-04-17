@@ -1,0 +1,123 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}Building Dashboard | Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto py-10">
+  <div class="glass rounded-3xl border border-white/10 p-8 overflow-hidden relative">
+    <div class="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,.18),transparent_40%),radial-gradient(circle_at_bottom_left,rgba(6,182,212,.12),transparent_35%)]"></div>
+    <div class="relative space-y-6">
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-sm text-violet-300 uppercase tracking-[0.2em]">Nexyza thinking</p>
+          <h1 class="text-3xl font-bold text-white mt-2">Building your first dashboard</h1>
+          <p class="text-slate-400 mt-3 max-w-2xl">Nexyza is combining the dataset profile with your conversation answers, deciding the best analysis path, validating chart quality, and preparing KPI cards.</p>
+        </div>
+        <span class="px-3 py-1 rounded-full text-xs border {% if ai_context.ai_enabled %}border-emerald-500/20 bg-emerald-500/10 text-emerald-300{% else %}border-amber-500/20 bg-amber-500/10 text-amber-300{% endif %}">
+          {% if ai_context.ai_enabled %}AI-led build{% else %}Manual fallback{% endif %}
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Dataset</div>
+          <div class="text-slate-100 font-medium mt-2">{{ upload.original_name }}</div>
+          <div class="text-slate-400 text-sm mt-1">{{ upload.row_count|default:0 }} rows · {{ upload.column_count|default:0 }} columns</div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Mode</div>
+          <div class="text-slate-100 font-medium mt-2">{% if ai_context.ai_enabled %}AI chart planning{% else %}Rule-based chart engine{% endif %}</div>
+          <div class="text-slate-400 text-sm mt-1">{{ ai_context.message }}</div>
+          {% if screening_json.question_source %}<div class="mt-2 text-xs text-slate-500">Question flow: {% if screening_json.question_source == 'ai_generated' %}AI generated{% else %}Manual fallback{% endif %}</div>{% endif %}
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">What happens now</div>
+          <div class="text-slate-100 font-medium mt-2">Charts, KPI cards, and quality checks</div>
+          <div class="text-slate-400 text-sm mt-1">Weak charts are pruned before the gallery opens.</div>
+          {% if conversation_brief.main_objective %}<div class="mt-2 text-xs text-slate-500">Objective: {{ conversation_brief.main_objective }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="rounded-3xl border border-white/10 bg-slate-950/60 p-5">
+        <div class="space-y-3" id="thinking-steps">
+          {% for step in thinking_steps %}
+          <div class="flex items-center gap-3 step-item {% if forloop.first %}active{% endif %}">
+            <div class="h-3 w-3 rounded-full bg-violet-500 step-dot"></div>
+            <div class="text-slate-200 step-label">{{ step }}</div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {% for label in kpi_placeholders %}
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4 pulse-card">
+          <div class="text-xs uppercase tracking-wide text-slate-500">{{ label }}</div>
+          <div class="mt-4 h-10 rounded-xl shimmer"></div>
+          <div class="mt-3 h-3 rounded-full shimmer"></div>
+        </div>
+        {% endfor %}
+      </div>
+
+
+
+      {% if semantic_snapshot %}
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4 lg:col-span-2">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Business semantics</div>
+          <div class="text-slate-100 font-medium mt-2">{{ semantic_snapshot.primary_archetype_display|default:screening_json.semantic_dataset_type|default:'General performance' }}</div>
+          <div class="text-slate-400 text-sm mt-1">{{ semantic_snapshot.summary|default:screening_json.semantic_summary }}</div>
+          <div class="mt-3 flex flex-wrap gap-2 text-xs">
+            {% if semantic_snapshot.roles.primary_measure %}<span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">Measure · {{ semantic_snapshot.roles.primary_measure }}</span>{% endif %}
+            {% if semantic_snapshot.roles.target_measure %}<span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">Target · {{ semantic_snapshot.roles.target_measure }}</span>{% endif %}
+            {% if semantic_snapshot.roles.primary_dimension %}<span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">Dimension · {{ semantic_snapshot.roles.primary_dimension }}</span>{% endif %}
+            {% if semantic_snapshot.roles.period_column %}<span class="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-200">Time · {{ semantic_snapshot.roles.period_column }}</span>{% endif %}
+          </div>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Confidence</div>
+          <div class="text-slate-100 font-medium mt-2">{{ semantic_snapshot.overall_confidence|default:screening_json.semantic_confidence }}</div>
+          <div class="text-slate-400 text-sm mt-1">Recommended KPIs: {% if semantic_snapshot.recommendations.kpis %}{{ semantic_snapshot.recommendations.kpis|join:', ' }}{% elif screening_json.semantic_kpis %}{{ screening_json.semantic_kpis|join:', ' }}{% else %}Primary KPI set pending{% endif %}</div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div id="build-status" class="text-sm text-slate-400">Starting dashboard build…</div>
+    </div>
+  </div>
+</div>
+<style>
+  .shimmer{background:linear-gradient(90deg,rgba(148,163,184,.08),rgba(139,92,246,.28),rgba(148,163,184,.08));background-size:200% 100%;animation:shimmer 1.35s linear infinite;height:2.25rem}
+  .pulse-card{animation:pulseCard 1.8s ease-in-out infinite}
+  .step-item{opacity:.45;transition:all .25s ease}
+  .step-item.active,.step-item.done{opacity:1}
+  .step-item.active .step-dot{box-shadow:0 0 0 8px rgba(139,92,246,.12);animation:pulseDot 1.2s infinite}
+  .step-item.done .step-dot{background:#10b981}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  @keyframes pulseDot{0%,100%{transform:scale(1)}50%{transform:scale(1.35)}}
+  @keyframes pulseCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+</style>
+<script>
+(async function(){
+  const steps=[...document.querySelectorAll('.step-item')];
+  const status=document.getElementById('build-status');
+  let idx=0;
+  const rotate=()=>{
+    steps.forEach((el,i)=>{el.classList.toggle('active', i===idx); if(i<idx) el.classList.add('done');});
+    idx=Math.min(idx+1, steps.length-1);
+  };
+  const ticker=setInterval(rotate, 900);
+  try{
+    const res=await fetch("{% url 'analyser:build_dashboard_start' upload.id %}",{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'}});
+    const data=await res.json();
+    clearInterval(ticker);
+    steps.forEach((el)=>{el.classList.add('done'); el.classList.remove('active');});
+    status.textContent = data.mode === 'ai' ? 'AI planning completed. Opening the chart gallery…' : 'Manual fallback completed. Opening the chart gallery…';
+    setTimeout(()=>{ window.location.href = data.redirect_url; }, 800);
+  }catch(err){
+    clearInterval(ticker);
+    status.textContent='Dashboard build failed. Returning you to the gallery.';
+    setTimeout(()=>{ window.location.href = "{% url 'analyser:chart_gallery' upload.id %}"; }, 1200);
+  }
+})();
+</script>
+{% endblock %}

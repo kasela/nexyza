@@ -1,0 +1,46 @@
+{% extends 'app_base.html' %}
+{% block title %}Add Google Sheet — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-lg mx-auto px-4 py-12">
+  <div class="mb-6">
+    <a href="{% url 'connectors:list' %}" class="text-xs text-slate-500 hover:text-slate-300">← Live Connectors</a>
+    <h1 class="text-2xl font-bold text-white mt-3 mb-1">Connect Google Sheet</h1>
+    <p class="text-sm text-slate-400">Paste the Google Sheets link and keep the same live-data theme already used across the app.</p>
+  </div>
+
+  {% if error %}<div class="bg-red-900/30 border border-red-700/40 rounded-xl p-4 mb-5 text-red-300 text-sm">{{ error }}</div>{% endif %}
+  <form method="post" class="glass rounded-2xl p-6 space-y-4">{% csrf_token %}
+    <div>
+      <label class="block text-slate-400 text-xs mb-1.5">Sheet URL *</label>
+      <input type="url" name="sheet_url" value="{{ form_data.sheet_url|default:'' }}" required
+             placeholder="https://docs.google.com/spreadsheets/d/..."
+             class="input-field w-full text-sm {% if field_errors.sheet_url %}border-red-500/50{% endif %}">
+      {% if field_errors.sheet_url %}<p class="text-xs text-red-300 mt-1.5">{{ field_errors.sheet_url }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-slate-400 text-xs mb-1.5">Display name</label>
+      <input type="text" name="name" value="{{ form_data.name|default:'' }}"
+             placeholder="e.g. Monthly Sales Data" class="input-field w-full text-sm {% if field_errors.name %}border-red-500/50{% endif %}">
+      {% if field_errors.name %}<p class="text-xs text-red-300 mt-1.5">{{ field_errors.name }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-slate-400 text-xs mb-1.5">Sheet tab (optional)</label>
+      <input type="text" name="tab" value="{{ form_data.tab|default:'' }}" placeholder="Sheet1" class="input-field w-full text-sm {% if field_errors.tab %}border-red-500/50{% endif %}">
+      {% if field_errors.tab %}<p class="text-xs text-red-300 mt-1.5">{{ field_errors.tab }}</p>{% endif %}
+    </div>
+    <div>
+      <label class="block text-slate-400 text-xs mb-1.5">Auto-refresh interval</label>
+      <select name="refresh_interval" class="input-field w-full text-sm {% if field_errors.refresh_interval %}border-red-500/50{% endif %}">
+        <option value="0" {% if form_data.refresh_interval == '0' %}selected{% endif %}>Manual only</option>
+        <option value="15" {% if form_data.refresh_interval == '15' %}selected{% endif %}>Every 15 minutes</option>
+        <option value="30" {% if form_data.refresh_interval == '30' %}selected{% endif %}>Every 30 minutes</option>
+        <option value="60" {% if form_data.refresh_interval|default:'60' == '60' %}selected{% endif %}>Every hour</option>
+        <option value="360" {% if form_data.refresh_interval == '360' %}selected{% endif %}>Every 6 hours</option>
+        <option value="1440" {% if form_data.refresh_interval == '1440' %}selected{% endif %}>Daily</option>
+      </select>
+      {% if field_errors.refresh_interval %}<p class="text-xs text-red-300 mt-1.5">{{ field_errors.refresh_interval }}</p>{% endif %}
+    </div>
+    <button type="submit" class="btn-primary w-full py-3">Connect & Import</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,92 @@
+{% extends 'app_base.html' %}
+{% block title %}Forecast — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div style="max-width:1000px;margin:0 auto;padding:28px 20px 60px;">
+  <div style="margin-bottom:24px;">
+    <div style="font-size:11px;color:#475569;margin-bottom:6px;">
+      <a href="{% url 'dashboard:index' %}" style="color:#475569;text-decoration:none;">Dashboard</a> ›
+      <a href="{% url 'analyser:result' upload.id %}" style="color:#475569;text-decoration:none;">{{ upload.original_name|truncatechars:30 }}</a> ›
+      <span style="color:#94a3b8;">Forecast</span>
+    </div>
+    <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;">📈 Forecasting</h1>
+    <p style="color:#64748b;font-size:13px;margin:4px 0 0;">{{ upload.original_name }} · {{ upload.row_count }} rows</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:280px 1fr;gap:20px;align-items:start;">
+    <!-- Config panel -->
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(124,58,237,.15);border-radius:14px;padding:20px;position:sticky;top:80px;">
+      <p style="color:#a78bfa;font-weight:600;font-size:13px;margin:0 0 16px;">Configure Forecast</p>
+      <div id="forecast-form-area">
+        <div style="margin-bottom:12px;">
+          <label style="color:#64748b;font-size:10px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Date / X Axis</label>
+          <select id="fc-date" style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;">
+            <option value="">— select column —</option>
+            {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="color:#64748b;font-size:10px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Value to Forecast</label>
+          <select id="fc-value" style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;">
+            <option value="">— select column —</option>
+            {% for col in numeric_columns %}<option value="{{ col.name }}">{{ col.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="color:#64748b;font-size:10px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Method</label>
+          <select id="fc-method" style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;">
+            {% for val,lbl in methods %}<option value="{{ val }}">{{ lbl }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="color:#64748b;font-size:10px;display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em;">Periods ahead: <span id="periods-lbl">6</span></label>
+          <input type="range" id="fc-periods" min="1" max="24" value="6" style="width:100%;"
+                 oninput="document.getElementById('periods-lbl').textContent=this.value">
+        </div>
+        <button onclick="runForecast()" class="btn-primary" style="width:100%;padding:10px;font-size:13px;" id="fc-btn">
+          Run Forecast →
+        </button>
+        <p id="fc-error" style="color:#f87171;font-size:11px;margin:8px 0 0;display:none;"></p>
+      </div>
+    </div>
+
+    <!-- Results panel -->
+    <div id="forecast-results">
+      {% if existing %}
+        {% include 'forecasting/partials/result.html' with fc=existing.0 %}
+      {% else %}
+        <div style="text-align:center;padding:60px 20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);border-radius:16px;">
+          <div style="font-size:3rem;margin-bottom:12px;">📈</div>
+          <p style="color:#e2e8f0;font-weight:600;margin-bottom:8px;">No forecasts yet</p>
+          <p style="color:#64748b;font-size:13px;">Select columns and run your first forecast.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+function runForecast(){
+  var date=document.getElementById('fc-date').value;
+  var val=document.getElementById('fc-value').value;
+  var method=document.getElementById('fc-method').value;
+  var periods=document.getElementById('fc-periods').value;
+  var errEl=document.getElementById('fc-error');
+  errEl.style.display='none';
+  if(!date||!val){errEl.textContent='Select both date and value columns';errEl.style.display='block';return;}
+  var btn=document.getElementById('fc-btn');
+  btn.textContent='Running…';btn.disabled=true;
+  var fd=new FormData();
+  fd.append('csrfmiddlewaretoken','{{ csrf_token }}');
+  fd.append('date_column',date);fd.append('value_column',val);
+  fd.append('method',method);fd.append('periods',periods);
+  fetch('{% url "forecasting:run" upload.id %}',{method:'POST',body:fd})
+    .then(r=>r.json())
+    .then(d=>{
+      btn.textContent='Run Forecast →';btn.disabled=false;
+      if(d.error){errEl.textContent=d.error;errEl.style.display='block';return;}
+      document.getElementById('forecast-results').innerHTML=d.html||'<p style="color:#34d399">Forecast complete</p>';
+      if(window.Chart&&d.html) setTimeout(renderForecastChart,100);
+    })
+    .catch(e=>{btn.textContent='Run Forecast →';btn.disabled=false;errEl.textContent='Request failed';errEl.style.display='block';});
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% load datalens_extras %}
+{% if fc and fc.forecast_data %}
+{% with d=fc.forecast_data %}
+<div>
+  {% if fc.ai_narrative %}
+  <div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05));border:1px solid rgba(124,58,237,.2);border-radius:14px;padding:18px 22px;margin-bottom:16px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span style="font-size:16px;">🤖</span>
+      <p style="color:#a78bfa;font-weight:600;font-size:12px;margin:0;">AI Forecast Narrative</p>
+      <span style="margin-left:auto;font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,.2);color:#a78bfa;text-transform:capitalize;">{{ fc.method }}</span>
+    </div>
+    <div style="color:#94a3b8;font-size:13px;line-height:1.7;white-space:pre-line;">{{ fc.ai_narrative }}</div>
+  </div>
+  {% endif %}
+
+  <!-- Chart -->
+  <div style="background:rgba(255,255,255,.02);border:1px solid rgba(124,58,237,.12);border-radius:14px;padding:16px;margin-bottom:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <p style="color:#e2e8f0;font-weight:600;font-size:13px;margin:0;">{{ d.value_col }} Forecast</p>
+      <span style="color:{% if d.trend == 'up' %}#34d399{% elif d.trend == 'down' %}#f87171{% else %}#64748b{% endif %};font-size:12px;font-weight:600;">
+        {% if d.trend == 'up' %}↗ Upward{% elif d.trend == 'down' %}↘ Downward{% else %}→ Flat{% endif %} trend
+      </span>
+    </div>
+    <div style="position:relative;height:260px;"><canvas id="fc-chart-{{ fc.id }}"></canvas></div>
+  </div>
+
+  <!-- Stats row -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+    {% with last_actual=d.actuals|last fc_first=d.forecast|first fc_last=d.forecast|last %}
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;">
+      <p style="color:#64748b;font-size:10px;margin:0 0 3px;">Last Actual</p>
+      <p style="color:#e2e8f0;font-size:1.1rem;font-weight:700;margin:0;">{{ last_actual }}</p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;">
+      <p style="color:#64748b;font-size:10px;margin:0 0 3px;">Next Period</p>
+      <p style="color:#a78bfa;font-size:1.1rem;font-weight:700;margin:0;">{{ fc_first }}</p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;">
+      <p style="color:#64748b;font-size:10px;margin:0 0 3px;">Period +{{ d.periods }}</p>
+      <p style="color:#a78bfa;font-size:1.1rem;font-weight:700;margin:0;">{{ fc_last }}</p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px;">
+      <p style="color:#64748b;font-size:10px;margin:0 0 3px;">Method</p>
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0;text-transform:capitalize;">{{ fc.method|replace:"_" }}</p>
+    </div>
+    {% endwith %}
+  </div>
+</div>
+
+<script>
+(function(){
+  var d={{ d|jsonify|safe }};
+  var labels=d.labels.concat(d.future_labels);
+  var actuals=d.actuals.concat(Array(d.future_labels.length).fill(null));
+  var fc=[...Array(d.actuals.length).fill(null),...d.forecast];
+  var lo=[...Array(d.actuals.length).fill(null),...d.lower];
+  var hi=[...Array(d.actuals.length).fill(null),...d.upper];
+  var el=document.getElementById('fc-chart-{{ fc.id }}');
+  if(!el)return;
+  new Chart(el,{
+    type:'line',
+    data:{labels:labels,datasets:[
+      {label:'Actual',data:actuals,borderColor:'rgba(139,92,246,1)',backgroundColor:'rgba(139,92,246,0.1)',borderWidth:2.5,pointRadius:3,tension:0.3,fill:true},
+      {label:'Forecast',data:fc,borderColor:'rgba(59,130,246,1)',backgroundColor:'transparent',borderWidth:2,borderDash:[6,3],pointRadius:3,tension:0.3},
+      {label:'Upper',data:hi,borderColor:'rgba(59,130,246,0.2)',backgroundColor:'rgba(59,130,246,0.08)',borderWidth:1,pointRadius:0,tension:0.3,fill:'+1'},
+      {label:'Lower',data:lo,borderColor:'rgba(59,130,246,0.2)',backgroundColor:'transparent',borderWidth:1,pointRadius:0,tension:0.3},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+      plugins:{legend:{labels:{color:'#94a3b8',font:{size:10},boxWidth:8}}},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:9},maxTicksLimit:10}},
+        y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:9}}}
+      }}
+  });
+})();
+</script>
+{% endwith %}
+{% endif %}

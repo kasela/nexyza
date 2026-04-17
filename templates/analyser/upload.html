@@ -1,0 +1,221 @@
+{% extends 'app_base.html' %}
+{% block title %}Analyse File — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12">
+  <div class="mb-8">
+    <h1 class="text-3xl font-bold text-white mb-2">Analyse a File</h1>
+    <p class="text-slate-400">Upload CSV, Excel, or JSON — results appear instantly.</p>
+  </div>
+
+  <!-- Quota bar (free users) -->
+  {% if not is_pro %}
+  <div class="glass rounded-xl p-4 mb-6 flex items-center justify-between gap-4">
+    <div class="flex-1">
+      <div class="flex justify-between text-xs mb-1.5">
+        <span class="text-slate-400">Monthly uploads</span>
+        <span class="text-violet-300 font-semibold">{{ monthly_count|default:0 }} / 5</span>
+      </div>
+      <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+        <div class="h-full rounded-full transition-all" style="width:{{ monthly_pct|default:0 }}%;background:linear-gradient(90deg,#7c3aed,#3b82f6)"></div>
+      </div>
+    </div>
+    <a href="{% url 'billing:pricing' %}" class="btn-primary text-xs py-2 px-4 whitespace-nowrap">Upgrade →</a>
+  </div>
+  {% endif %}
+
+  <!-- Drop zone -->
+  <div class="glass rounded-2xl p-8 glow text-center" id="drop-zone">
+    <form id="upload-form" enctype="multipart/form-data">
+      {% csrf_token %}
+      <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+      <input type="file" id="file-input" name="file" accept=".csv,.xlsx,.xls,.json" class="hidden"
+             onchange="handleFileSelect(this)">
+
+      <div id="drop-area"
+           class="border-2 border-dashed border-violet-700/40 rounded-xl p-12 cursor-pointer hover:border-violet-500/60 transition-all duration-300 hover:bg-violet-900/10"
+           onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault(); this.classList.add('border-violet-400','bg-violet-900/20')"
+           ondragleave="this.classList.remove('border-violet-400','bg-violet-900/20')"
+           ondrop="handleDrop(event)">
+
+        <div id="drop-idle">
+          <div class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:rgba(124,58,237,0.15)">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#a78bfa" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+            </svg>
+          </div>
+          <p class="text-white font-semibold text-lg mb-1">Drop your file here</p>
+          <p class="text-slate-400 text-sm">or click to browse</p>
+          <p class="text-slate-600 text-xs mt-3">CSV · XLSX · XLS · JSON</p>
+          {% if is_pro %}<p class="text-slate-600 text-xs">Up to 10 MB</p>
+          {% else %}<p class="text-slate-600 text-xs">Up to 1 MB on Free plan</p>{% endif %}
+        </div>
+
+        <div id="drop-selected" class="hidden">
+          <div class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-green-900/30">
+            <svg width="28" height="28" fill="none" viewBox="0 0 24 24" stroke="#4ade80" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+            </svg>
+          </div>
+          <p class="text-white font-semibold text-lg mb-1" id="selected-filename">File selected</p>
+          <p class="text-slate-400 text-sm" id="selected-filesize"></p>
+        </div>
+      </div>
+
+      <!-- Progress UI (hidden until upload starts) -->
+      <div id="upload-progress-wrap" class="hidden mt-6">
+        <div class="flex items-center justify-between mb-2">
+          <p id="progress-label" class="text-slate-300 text-sm">Uploading…</p>
+          <p id="progress-pct" class="text-violet-300 text-sm font-mono font-semibold">0%</p>
+        </div>
+        <div class="h-2 bg-slate-800 rounded-full overflow-hidden mb-3">
+          <div id="progress-bar"
+               class="h-full rounded-full transition-all duration-200"
+               style="width:0%;background:linear-gradient(90deg,#7c3aed,#3b82f6);">
+          </div>
+        </div>
+        <div id="progress-steps" class="flex justify-between text-xs text-slate-600">
+          <span id="step-upload" class="text-violet-400">↑ Uploading</span>
+          <span id="step-parse">→ Parsing</span>
+          <span id="step-analyse">🔍 Analysing</span>
+          <span id="step-charts">📊 Charts</span>
+        </div>
+      </div>
+
+      <button type="button" id="submit-btn" onclick="startUpload()"
+              class="mt-6 btn-primary py-3 px-10 text-base disabled:opacity-40 disabled:cursor-not-allowed hidden"
+              disabled>
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347a1.125 1.125 0 01-1.667-.985V5.653z"/></svg>
+        Analyse Now
+      </button>
+    </form>
+  </div>
+
+  <!-- Result area (HTMX target) -->
+  <div id="upload-result" class="mt-6"></div>
+</div>
+
+<script>
+function handleFileSelect(input) {
+  if (input.files.length > 0) showFile(input.files[0]);
+}
+function handleDrop(e) {
+  e.preventDefault();
+  const files = e.dataTransfer.files;
+  if (files.length > 0) {
+    const dt = new DataTransfer();
+    dt.items.add(files[0]);
+    document.getElementById('file-input').files = dt.files;
+    showFile(files[0]);
+    document.getElementById('drop-area').classList.remove('border-violet-400','bg-violet-900/20');
+  }
+}
+function formatBytes(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(2) + ' MB';
+}
+function showFile(file) {
+  document.getElementById('drop-idle').classList.add('hidden');
+  document.getElementById('drop-selected').classList.remove('hidden');
+  document.getElementById('selected-filename').textContent = file.name;
+  document.getElementById('selected-filesize').textContent = formatBytes(file.size);
+  const btn = document.getElementById('submit-btn');
+  btn.classList.remove('hidden');
+  btn.disabled = false;
+}
+
+function setStep(step) {
+  ['upload','parse','analyse','charts'].forEach(function(s){
+    var el = document.getElementById('step-' + s);
+    if(el) el.style.color = s === step ? '#a78bfa' : (
+      ['upload','parse','analyse','charts'].indexOf(s) <
+      ['upload','parse','analyse','charts'].indexOf(step) ? '#34d399' : '#475569'
+    );
+  });
+}
+
+function startUpload() {
+  var fileInput = document.getElementById('file-input');
+  if (!fileInput.files.length) return;
+
+  var btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+  document.getElementById('upload-progress-wrap').classList.remove('hidden');
+  document.getElementById('drop-area').style.opacity = '0.4';
+  setStep('upload');
+
+  var formData = new FormData(document.getElementById('upload-form'));
+  formData.append('file', fileInput.files[0]);
+
+  var xhr = new XMLHttpRequest();
+
+  // Upload progress (0 → 60%)
+  xhr.upload.addEventListener('progress', function(e) {
+    if (e.lengthComputable) {
+      var pct = Math.round((e.loaded / e.total) * 60);
+      document.getElementById('progress-bar').style.width = pct + '%';
+      document.getElementById('progress-pct').textContent = pct + '%';
+      if (pct > 20) setStep('parse');
+      document.getElementById('progress-label').textContent = 'Uploading… ' + formatBytes(e.loaded) + ' / ' + formatBytes(e.total);
+    }
+  });
+
+  xhr.upload.addEventListener('load', function() {
+    // Upload done — now server is analysing (60 → 95% animated)
+    document.getElementById('progress-label').textContent = 'Analysing data…';
+    setStep('analyse');
+    var pct = 60;
+    var interval = setInterval(function() {
+      pct += Math.random() * 4;
+      if (pct >= 90) { pct = 90; clearInterval(interval); }
+      document.getElementById('progress-bar').style.width = Math.round(pct) + '%';
+      document.getElementById('progress-pct').textContent = Math.round(pct) + '%';
+      if (pct > 75) setStep('charts');
+    }, 300);
+    xhr._analysisInterval = interval;
+  });
+
+  xhr.addEventListener('load', function() {
+    if (xhr._analysisInterval) clearInterval(xhr._analysisInterval);
+    document.getElementById('progress-bar').style.width = '100%';
+    document.getElementById('progress-pct').textContent = '100%';
+    document.getElementById('progress-label').textContent = 'Done!';
+    setStep('charts');
+
+    if (xhr.status === 200 || xhr.status === 201) {
+      // HTMX-style: check for HX-Push-Url header or parse HTML response
+      var pushUrl = xhr.getResponseHeader('HX-Push-Url');
+      if (pushUrl) {
+        setTimeout(function(){ window.location.href = pushUrl; }, 300);
+      } else {
+        // Insert response HTML
+        var resultEl = document.getElementById('upload-result');
+        if (resultEl) resultEl.innerHTML = xhr.responseText;
+        // If response contains a redirect link, follow it
+        var match = xhr.responseText.match(/href="(\/workspace\/[^\"]+\/)"/);
+        if (match) setTimeout(function(){ window.location.href = match[1]; }, 500);
+      }
+    } else {
+      document.getElementById('progress-label').textContent = 'Upload failed. Please try again.';
+      document.getElementById('progress-bar').style.background = '#ef4444';
+      btn.disabled = false;
+      btn.textContent = 'Try Again';
+    }
+  });
+
+  xhr.addEventListener('error', function() {
+    if (xhr._analysisInterval) clearInterval(xhr._analysisInterval);
+    document.getElementById('progress-label').textContent = 'Network error. Please try again.';
+    document.getElementById('progress-bar').style.background = '#ef4444';
+    btn.disabled = false; btn.textContent = 'Try Again';
+  });
+
+  xhr.open('POST', '{% url "analyser:upload" %}');
+  xhr.setRequestHeader('HX-Request', 'true');
+  xhr.send(formData);
+}
+</script>
+{% endblock %}

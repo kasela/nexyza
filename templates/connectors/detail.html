@@ -1,0 +1,202 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ connector.name }} — Connector Detail{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:28px 20px 60px;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px;">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <a href="{% url 'connectors:list' %}" style="color:#94a3b8;font-size:12px;text-decoration:none;">← Back to connectors</a>
+        <span style="padding:4px 10px;border-radius:999px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.18);color:#c4b5fd;font-size:11px;">{{ connector.source_label }}</span>
+      </div>
+      <h1 style="color:#fff;font-size:1.55rem;font-weight:700;margin:10px 0 0;">{{ connector.name }}</h1>
+      <p style="color:#64748b;font-size:13px;margin:6px 0 0;">Operational detail for this live connector, with filterable sync history and manual notes.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <form method="post" action="{% url 'connectors:trigger_sync' connector.id %}">{% csrf_token %}
+        <button style="padding:10px 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Sync now</button>
+      </form>
+      {% if connector.upload_set.first %}<a href="/workspace/{{ connector.upload_set.first.id }}/" style="padding:10px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:12px;text-decoration:none;">Open dataset</a>{% endif %}
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px;">
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Status</div>
+      <div style="color:{{ connector_payload.status_color }};font-size:1.2rem;font-weight:700;margin-top:6px;">{{ connector_payload.status_dot }} {{ connector_payload.status_label }}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Last sync {{ connector_payload.last_synced_human }}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Next sync</div>
+      <div style="color:#fff;font-size:1.2rem;font-weight:700;margin-top:6px;">{{ connector_payload.next_sync_human }}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Every {{ connector.refresh_interval_min }} min{% if connector.refresh_interval_min == 0 %} (manual){% endif %}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Rows</div>
+      <div style="color:#fff;font-size:1.2rem;font-weight:700;margin-top:6px;">{{ connector.row_count|default:0 }}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Updated {{ connector_payload.updated_human }}</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Sheet / Range</div>
+      <div style="color:#fff;font-size:1rem;font-weight:700;margin-top:6px;">{{ connector.sheet_tab|default:'—' }}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">{{ connector.range_spec|default:'A1' }}</div>
+    </div>
+  </div>
+
+  {% if connector.sync_error %}<div style="margin-bottom:18px;padding:14px 16px;border-radius:16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.16);color:#fecaca;font-size:12px;">{{ connector.sync_error }}</div>{% endif %}
+
+  <div id="connector-health-panel" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:18px;">
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Health score</div>
+      <div style="color:#fff;font-size:1.35rem;font-weight:700;margin-top:6px;">{{ connector_health.success_rate }}%</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Recent successful sync rate</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Row movement</div>
+      <div style="color:#fff;font-size:1.35rem;font-weight:700;margin-top:6px;">{{ connector_health.row_delta_pct|default:0 }}%</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Vs previous successful sync</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Schema drift</div>
+      <div style="color:{% if connector_health.schema_drift.has_changes %}#fbbf24{% else %}#34d399{% endif %};font-size:1.1rem;font-weight:700;margin-top:6px;">{{ connector_health.schema_drift.summary }}</div>
+      <div style="color:#94a3b8;font-size:11px;margin-top:6px;">Compared with previous successful sync</div>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:16px;">
+      <div style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.08em;">Warnings</div>
+      <div id="connector-health-warnings" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+        {% if connector_health.warnings %}
+          {% for warning in connector_health.warnings %}
+            <div style="padding:8px 10px;border-radius:10px;background:{% if warning.tone == 'error' %}rgba(239,68,68,.08){% elif warning.tone == 'warn' %}rgba(251,191,36,.08){% else %}rgba(59,130,246,.08){% endif %};border:1px solid {% if warning.tone == 'error' %}rgba(239,68,68,.18){% elif warning.tone == 'warn' %}rgba(251,191,36,.18){% else %}rgba(59,130,246,.18){% endif %};color:{% if warning.tone == 'error' %}#fecaca{% elif warning.tone == 'warn' %}#fde68a{% else %}#bfdbfe{% endif %};font-size:11px;">{{ warning.label }}</div>
+          {% endfor %}
+        {% else %}
+          <div style="padding:8px 10px;border-radius:10px;background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.18);color:#bbf7d0;font-size:11px;">No active health warnings.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,.9fr);gap:18px;align-items:start;">
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+        <div>
+          <h2 style="color:#fff;font-size:1rem;font-weight:700;margin:0;">Sync history</h2>
+          <p style="color:#64748b;font-size:12px;margin:5px 0 0;">Filter by outcome, trigger type, or search within messages and notes.</p>
+        </div>
+      </div>
+      <form id="connector-history-filters" style="display:grid;grid-template-columns:1fr 170px 170px auto;gap:10px;margin-bottom:14px;">
+        <input type="search" name="q" value="{{ active_query }}" placeholder="Search messages or notes" style="padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+        <select name="status" style="padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+          <option value="">All statuses</option>
+          <option value="ok" {% if active_status == 'ok' %}selected{% endif %}>Success</option>
+          <option value="error" {% if active_status == 'error' %}selected{% endif %}>Error</option>
+          <option value="syncing" {% if active_status == 'syncing' %}selected{% endif %}>Syncing</option>
+        </select>
+        <select name="trigger" style="padding:11px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+          <option value="">All triggers</option>
+          <option value="manual" {% if active_trigger == 'manual' %}selected{% endif %}>Manual</option>
+          <option value="auto" {% if active_trigger == 'auto' %}selected{% endif %}>Auto</option>
+          <option value="retry" {% if active_trigger == 'retry' %}selected{% endif %}>Retry</option>
+          <option value="initial" {% if active_trigger == 'initial' %}selected{% endif %}>Initial</option>
+        </select>
+        <button style="padding:11px 16px;border:none;border-radius:12px;background:rgba(124,58,237,.16);color:#ddd6fe;font-size:12px;font-weight:700;cursor:pointer;">Apply</button>
+      </form>
+      <div id="connector-history-detail-list" style="display:flex;flex-direction:column;gap:10px;">
+        {% for item in history_payload.items %}
+        <div data-history-item="{{ item.id }}" style="padding:14px;border-radius:16px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+            <div style="min-width:0;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span style="color:{% if item.status == 'ok' %}#34d399{% elif item.status == 'error' %}#f87171{% else %}#fbbf24{% endif %};font-size:11px;font-weight:700;text-transform:uppercase;">{{ item.status }}</span>
+                <span style="color:#94a3b8;font-size:10px;">{{ item.trigger }}</span>
+                <span style="color:#64748b;font-size:10px;">{{ item.completed_human|default:item.started_human }}</span>
+                <span style="color:#64748b;font-size:10px;">Rows {{ item.row_count }}</span>
+              </div>
+              <div style="color:#e2e8f0;font-size:13px;margin-top:6px;">{{ item.message }}</div>
+              {% if item.error_message %}<div style="color:#fca5a5;font-size:11px;margin-top:6px;">{{ item.error_message }}</div>{% endif %}
+            </div>
+            {% if item.can_retry %}<button type="button" data-retry-log="{{ item.id }}" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.08);color:#fca5a5;font-size:11px;cursor:pointer;">Retry</button>{% endif %}
+          </div>
+          <div style="margin-top:10px;">
+            <label style="display:block;color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Notes</label>
+            <textarea data-note-input="{{ item.id }}" rows="2" style="width:100%;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.6);color:#e2e8f0;font-size:12px;resize:vertical;">{{ item.notes }}</textarea>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;">
+              <div data-note-status="{{ item.id }}" style="color:#64748b;font-size:11px;">Add operational notes for this run.</div>
+              <button type="button" data-save-note="{{ item.id }}" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#c4b5fd;font-size:11px;cursor:pointer;">Save note</button>
+            </div>
+          </div>
+        </div>
+        {% empty %}
+        <div style="padding:18px;border-radius:16px;background:rgba(255,255,255,.025);border:1px dashed rgba(255,255,255,.08);color:#64748b;font-size:12px;">No sync logs match the current filters.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px;">
+        <h3 style="color:#fff;font-size:.95rem;font-weight:700;margin:0 0 10px;">Connection info</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div><div style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em;">Created</div><div style="color:#e2e8f0;font-size:12px;margin-top:4px;">{{ connector_payload.created_human }}</div></div>
+          <div><div style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em;">Source URL</div><div style="color:#e2e8f0;font-size:12px;margin-top:4px;word-break:break-all;">{{ connector_payload.sheet_url|default:'—' }}</div></div>
+          <div><div style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.08em;">Latest dataset</div><div style="color:#e2e8f0;font-size:12px;margin-top:4px;">{% if connector.upload_set.first %}<a href="/workspace/{{ connector.upload_set.first.id }}/" style="color:#93c5fd;text-decoration:none;">Open latest analysis</a>{% else %}No dataset yet{% endif %}</div></div>
+        </div>
+      </div>
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;">
+          <h3 style="color:#fff;font-size:.95rem;font-weight:700;margin:0;">Alert rules</h3>
+          <div style="color:#64748b;font-size:11px;">Automate connector warnings</div>
+        </div>
+        <form id="connector-alert-rule-form" style="display:grid;grid-template-columns:1fr 110px 130px auto;gap:8px;margin-bottom:10px;">
+          <select name="rule_type" style="padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+            <option value="sync_failed">Sync failed</option>
+            <option value="row_drop">Row drop %</option>
+            <option value="row_spike">Row spike %</option>
+            <option value="schema_change">Schema change</option>
+            <option value="stale">No sync timeout</option>
+          </select>
+          <input name="threshold" placeholder="Threshold" style="padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+          <select name="action" style="padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(15,23,42,.65);color:#e2e8f0;font-size:12px;">
+            <option value="">No action</option>
+            <option value="retry">Auto retry</option>
+            <option value="notify">Notify</option>
+          </select>
+          <button style="padding:10px 12px;border:none;border-radius:12px;background:rgba(124,58,237,.16);color:#ddd6fe;font-size:12px;font-weight:700;cursor:pointer;">Add</button>
+        </form>
+        <div id="connector-alert-rule-errors" style="color:#fca5a5;font-size:11px;min-height:16px;margin-bottom:8px;"></div>
+        <div id="connector-alert-rules-list" style="display:flex;flex-direction:column;gap:8px;">
+          {% for rule in alert_rules.items %}
+          <div data-alert-rule="{{ rule.id }}" style="padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <div>
+              <div style="color:#e2e8f0;font-size:12px;font-weight:600;">{{ rule.rule_label }}</div>
+              <div style="color:#94a3b8;font-size:11px;margin-top:4px;">{% if rule.threshold %}Threshold {{ rule.threshold }}{% else %}No threshold{% endif %} · {{ rule.action_label }}</div>
+            </div>
+            <button type="button" data-delete-alert-rule="{{ rule.id }}" style="padding:6px 10px;border-radius:10px;border:1px solid rgba(239,68,68,.18);background:rgba(239,68,68,.08);color:#fca5a5;font-size:11px;cursor:pointer;">Delete</button>
+          </div>
+          {% empty %}
+          <div style="padding:12px;border-radius:12px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);color:#64748b;font-size:11px;">No alert rules yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05));border:1px solid rgba(124,58,237,.16);border-radius:18px;padding:18px;">
+        <h3 style="color:#fff;font-size:.95rem;font-weight:700;margin:0 0 8px;">Operator hints</h3>
+        <ul style="margin:0;padding-left:18px;color:#cbd5e1;font-size:12px;line-height:1.7;">
+          <li>Use notes to document one-off fixes or upstream spreadsheet issues.</li>
+          <li>Filter retry runs separately to confirm whether a failed connector recovered.</li>
+          <li>Keep manual-only connectors on a note routine if business-critical.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script id="connector-detail-config" type="application/json">{
+    "detailHistoryUrl": "{% url 'connectors:detail_history' connector.id %}",
+    "healthUrl": "{% url 'connectors:health' connector.id %}",
+    "retryBaseUrl": "{% url 'connectors:retry_sync_log' 0 %}",
+    "saveNoteBaseUrl": "{% url 'connectors:save_sync_note' 0 %}",
+    "alertsUrl": "{% url 'connectors:alerts' connector.id %}",
+    "addAlertRuleUrl": "{% url 'connectors:add_alert_rule' connector.id %}",
+    "deleteAlertRuleBaseUrl": "{% url 'connectors:delete_alert_rule' '00000000-0000-0000-0000-000000000000' %}"
+  }</script>
+  <script src="{% static 'js/connectors/detail-page.js' %}"></script>
+</div>
+{% endblock %}

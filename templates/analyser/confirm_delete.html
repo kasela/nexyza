@@ -1,0 +1,15 @@
+{% extends 'app_base.html' %}
+{% load analyser_safety %}
+{% block title %}Delete File — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-24">
+  <div class="glass rounded-2xl p-8 text-center">
+    <p class="text-white font-semibold text-lg mb-2">Delete this file?</p>
+    <p class="text-slate-400 text-sm mb-6">{{ upload.original_name|safe_preview }} will be permanently removed.</p>
+    <div class="flex gap-3 justify-center">
+      <a href="{% url 'dashboard:index' %}" class="btn-secondary">Cancel</a>
+      <form method="post">{% csrf_token %}<button type="submit" class="btn-primary bg-red-700">Delete</button></form>
+    </div>
+  </div>
+</div>
+{% endblock %}

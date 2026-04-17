@@ -1,0 +1,45 @@
+{% extends 'app_base.html' %}
+{% block title %}Join Files — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-8"><h1 class="text-3xl font-bold text-white">Multi-File Join</h1><p class="text-slate-400 text-sm mt-1">Merge two datasets on a shared key column.</p></div>
+  <form method="post" action="{% url 'joins:execute' %}" class="glass rounded-2xl p-7 space-y-6">
+    {% csrf_token %}
+    <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Result Name</label>
+      <input type="text" name="name" value="Joined Dataset" class="input-field text-sm"></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+      <div class="space-y-3"><label class="block text-white font-semibold text-sm">File A (Left)</label>
+        <select name="left_upload" id="left-sel" class="input-field text-sm" onchange="loadCols(this.value,'left')"><option value="">Select file…</option>{% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name }}</option>{% endfor %}</select>
+        <div id="left-key-wrap"><select name="left_key" class="input-field text-sm"><option>Select key…</option></select></div></div>
+      <div class="space-y-3"><label class="block text-white font-semibold text-sm">File B (Right)</label>
+        <select name="right_upload" id="right-sel" class="input-field text-sm" onchange="loadCols(this.value,'right')"><option value="">Select file…</option>{% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name }}</option>{% endfor %}</select>
+        <div id="right-key-wrap"><select name="right_key" class="input-field text-sm"><option>Select key…</option></select></div></div>
+    </div>
+    <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Join Type</label>
+      <div class="grid grid-cols-4 gap-2">
+        {% for val, label in join_types %}<label class="cursor-pointer"><input type="radio" name="join_type" value="{{ val }}" class="sr-only" {% if val == "inner" %}checked{% endif %}>
+          <div class="p-3 rounded-xl border border-violet-900/30 text-center text-sm cursor-pointer hover:border-violet-500/50 text-slate-400 join-pill">{{ label }}</div></label>
+        {% endfor %}
+      </div>
+    </div>
+    <button type="submit" class="btn-primary w-full justify-center py-3.5 text-base">Execute Join →</button>
+  </form>
+  {% if recent_joins %}
+  <div class="mt-10"><h2 class="text-white font-semibold mb-4">Recent Joins</h2>
+    <div class="space-y-3">{% for j in recent_joins %}<div class="glass rounded-xl p-4 flex items-center gap-4"><div class="flex-1"><p class="text-white text-sm font-medium">{{ j.name }}</p><p class="text-slate-500 text-xs">{{ j.left_upload.original_name }} ⋈ {{ j.right_upload.original_name }}</p></div>{% if j.result_upload %}<a href="{% url 'analyser:result' j.result_upload.id %}" class="btn-secondary text-xs py-1.5 px-3">View</a>{% endif %}</div>{% endfor %}</div>
+  </div>{% endif %}
+</div>
+<script>
+function loadCols(pk, side) {
+  if (!pk) return;
+  fetch(`/join/columns/${pk}/?side=${side}`)
+    .then(r=>r.text()).then(html=>{ document.getElementById(`${side}-key-wrap`).innerHTML=html; });
+}
+document.querySelectorAll('[type=radio][name=join_type]').forEach(r=>{
+  r.addEventListener('change',()=>{
+    document.querySelectorAll('.join-pill').forEach(p=>{p.style.cssText='';p.className='p-3 rounded-xl border border-violet-900/30 text-center text-sm cursor-pointer hover:border-violet-500/50 text-slate-400 join-pill';});
+    r.nextElementSibling.style.cssText='background:rgba(124,58,237,0.25);color:#c4b5fd;border-color:rgba(139,92,246,0.5)';
+  });
+});
+</script>
+{% endblock %}

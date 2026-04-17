@@ -1,0 +1,85 @@
+{% extends 'app_base.html' %}
+{% block title %}Version Diff — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:28px 20px 60px;">
+  <div style="margin-bottom:24px;">
+    <div style="font-size:11px;color:#475569;margin-bottom:6px;">
+      <a href="{% url 'analyser:result' upload.id %}" style="color:#475569;text-decoration:none;">{{ upload.original_name|truncatechars:30 }}</a> ›
+      <a href="{% url 'versioning:history' upload.id %}" style="color:#475569;text-decoration:none;">Versions</a> ›
+      Diff v{{ snap1.version }} → v{{ snap2.version }}
+    </div>
+    <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;">Version Comparison</h1>
+  </div>
+
+  <!-- Version badges -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+    <div style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:10px;padding:8px 16px;">
+      <p style="color:#a78bfa;font-size:11px;margin:0 0 2px;">v{{ snap1.version }}</p>
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0;">{{ snap1.label|default:"Snapshot" }} — {{ snap1.row_count }} rows</p>
+    </div>
+    <span style="color:#475569;font-size:20px;">→</span>
+    <div style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:8px 16px;">
+      <p style="color:#60a5fa;font-size:11px;margin:0 0 2px;">v{{ snap2.version }}</p>
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0;">{{ snap2.label|default:"Snapshot" }} — {{ snap2.row_count }} rows</p>
+    </div>
+  </div>
+
+  <!-- Summary stats -->
+  {% if diff %}
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+    <div style="background:{% if diff.row_delta > 0 %}rgba(16,185,129,.08){% elif diff.row_delta < 0 %}rgba(239,68,68,.08){% else %}rgba(255,255,255,.03){% endif %};border:1px solid {% if diff.row_delta > 0 %}rgba(16,185,129,.2){% elif diff.row_delta < 0 %}rgba(239,68,68,.2){% else %}rgba(255,255,255,.07){% endif %};border-radius:12px;padding:14px 16px;">
+      <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Row Change</p>
+      <p style="color:{% if diff.row_delta > 0 %}#34d399{% elif diff.row_delta < 0 %}#f87171{% else %}#94a3b8{% endif %};font-size:1.4rem;font-weight:700;margin:0;">
+        {% if diff.row_delta > 0 %}+{% endif %}{{ diff.row_delta }}
+      </p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;">
+      <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Column Change</p>
+      <p style="color:{% if diff.col_delta > 0 %}#34d399{% elif diff.col_delta < 0 %}#f87171{% else %}#94a3b8{% endif %};font-size:1.4rem;font-weight:700;margin:0;">
+        {% if diff.col_delta > 0 %}+{% endif %}{{ diff.col_delta }}
+      </p>
+    </div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 16px;">
+      <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.05em;margin:0 0 4px;">Changed Columns</p>
+      <p style="color:#e2e8f0;font-size:1.4rem;font-weight:700;margin:0;">{{ diff.changed_cols|length }}</p>
+    </div>
+  </div>
+
+  <!-- Column-level diff -->
+  {% if diff.changed_cols %}
+  <div style="background:rgba(255,255,255,.02);border:1px solid rgba(124,58,237,.12);border-radius:14px;overflow:hidden;">
+    <div style="padding:12px 16px;border-bottom:1px solid rgba(124,58,237,.1);">
+      <p style="color:#a78bfa;font-weight:600;font-size:13px;margin:0;">Column Changes</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:rgba(255,255,255,.02);">
+          <th style="text-align:left;padding:8px 16px;color:#64748b;">Column</th>
+          <th style="text-align:right;padding:8px 12px;color:#64748b;">v{{ snap1.version }} mean</th>
+          <th style="text-align:right;padding:8px 12px;color:#64748b;">v{{ snap2.version }} mean</th>
+          <th style="text-align:right;padding:8px 16px;color:#64748b;">Δ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ch in diff.changed_cols %}
+        <tr style="border-top:1px solid rgba(255,255,255,.04);">
+          <td style="padding:8px 16px;color:#e2e8f0;font-family:monospace;">{{ ch.name }}</td>
+          <td style="padding:8px 12px;text-align:right;color:#94a3b8;font-family:monospace;">{{ ch.old_mean|default:"—" }}</td>
+          <td style="padding:8px 12px;text-align:right;color:#94a3b8;font-family:monospace;">{{ ch.new_mean|default:"—" }}</td>
+          <td style="padding:8px 16px;text-align:right;font-family:monospace;color:{% if ch.delta > 0 %}#34d399{% elif ch.delta < 0 %}#f87171{% else %}#94a3b8{% endif %};">
+            {% if ch.delta %}{% if ch.delta > 0 %}+{% endif %}{{ ch.delta|floatformat:3 }}{% else %}—{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div style="text-align:center;padding:32px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.15);border-radius:14px;">
+    <p style="color:#34d399;font-weight:600;margin:0 0 4px;">✅ No meaningful changes</p>
+    <p style="color:#64748b;font-size:12px;margin:0;">Column statistics are identical between these versions.</p>
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

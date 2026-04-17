@@ -1,0 +1,490 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% load static %}
+{% load analyser_safety %}
+{% block title %}Charts — {{ upload.original_name|safe_preview }}{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+<style>
+:root{
+  --surface:#0b0918;--glass:rgba(255,255,255,0.035);
+  --border:rgba(124,58,237,0.18);--accent:#7c3aed;--accent2:#3b82f6;
+  --text:#e2e8f0;--muted:#64748b;--r:14px;
+}
+
+/* ── Layout ─────────────────────────────────── */
+.g-shell{max-width:1400px;margin:0 auto;padding:20px 24px 40px;}
+@media(max-width:768px){.g-shell{padding:12px 14px 32px;}}
+
+/* ── Top bar ────────────────────────────────── */
+.g-topbar{display:flex;align-items:center;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.g-breadcrumb{font-size:11px;color:#475569;display:flex;align-items:center;gap:5px;flex:1;min-width:0;}
+.g-breadcrumb a{color:#475569;text-decoration:none;transition:color .15s;}
+.g-breadcrumb a:hover{color:#e2e8f0;}
+.g-breadcrumb span{color:#334155;}
+.g-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+
+/* ── Action buttons ─────────────────────────── */
+.ga-btn{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:6px 12px;border-radius:8px;font-size:11px;font-weight:500;
+  cursor:pointer;transition:all .15s;white-space:nowrap;border:none;
+  text-decoration:none;
+}
+.ga-btn-primary{
+  background:linear-gradient(135deg,rgba(124,58,237,.9),rgba(99,46,212,.9));
+  color:#fff;box-shadow:0 2px 8px rgba(124,58,237,.3);
+}
+.ga-btn-primary:hover{background:linear-gradient(135deg,#7c3aed,#6d28d9);box-shadow:0 4px 14px rgba(124,58,237,.4);}
+.ga-btn-primary:disabled{opacity:.45;cursor:not-allowed;}
+.ga-btn-ghost{
+  background:rgba(255,255,255,.05);color:#94a3b8;
+  border:1px solid rgba(255,255,255,.08);
+}
+.ga-btn-ghost:hover{background:rgba(255,255,255,.09);color:#e2e8f0;border-color:rgba(255,255,255,.14);}
+.ga-sep{width:1px;height:20px;background:rgba(255,255,255,.07);flex-shrink:0;}
+
+/* ── Stats strip ────────────────────────────── */
+.g-stats{
+  display:flex;align-items:center;gap:16px;
+  padding:10px 16px;border-radius:12px;margin-bottom:16px;
+  background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);
+  flex-wrap:wrap;
+}
+.g-stat{display:flex;align-items:center;gap:6px;}
+.g-stat-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.g-stat-val{font-size:13px;font-weight:700;color:#e2e8f0;}
+.g-stat-lbl{font-size:11px;color:#475569;}
+
+/* ── Mode tabs ──────────────────────────────── */
+.g-mode-tabs{display:flex;gap:2px;padding:3px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.07);}
+.g-mode-tab{
+  padding:5px 12px;border-radius:7px;font-size:11px;font-weight:500;
+  color:#64748b;cursor:pointer;transition:all .15s;text-decoration:none;
+  white-space:nowrap;
+}
+.g-mode-tab.active{background:rgba(124,58,237,.25);color:#c4b5fd;border:none;}
+.g-mode-tab:hover:not(.active){color:#94a3b8;background:rgba(255,255,255,.05);}
+
+/* ── Filter bar ─────────────────────────────── */
+.g-filterbar{
+  display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;
+  padding:10px 14px;border-radius:12px;
+  background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.055);
+}
+.g-search{
+  padding:5px 12px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.1);border-radius:8px;
+  color:#e2e8f0;font-size:11px;outline:none;width:160px;
+}
+.g-search:focus{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.05);}
+.g-search::placeholder{color:#334155;}
+.g-type-pills{display:flex;gap:4px;flex-wrap:wrap;}
+.g-pill{
+  padding:4px 10px;border-radius:6px;font-size:10px;font-weight:500;
+  cursor:pointer;transition:all .15s;white-space:nowrap;border:none;
+  background:rgba(255,255,255,.04);color:#64748b;
+}
+.g-pill.active{background:rgba(124,58,237,.2);color:#a78bfa;}
+.g-pill:hover:not(.active){background:rgba(255,255,255,.08);color:#94a3b8;}
+.g-sort{
+  padding:4px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
+  border-radius:8px;color:#94a3b8;font-size:11px;outline:none;cursor:pointer;
+}
+.g-layout-btns{display:flex;gap:2px;}
+.g-layout-btn{
+  width:26px;height:26px;border-radius:6px;background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.07);color:#64748b;font-size:11px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.g-layout-btn.active{background:rgba(124,58,237,.2);color:#a78bfa;border-color:rgba(124,58,237,.3);}
+
+/* ── Chart grid ─────────────────────────────── */
+.charts-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start;}
+@media(max-width:900px){.charts-grid{grid-template-columns:1fr;}}
+@media(min-width:901px) and (max-width:1200px){.charts-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+/* ── Empty state ────────────────────────────── */
+.g-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:48px 24px;border-radius:16px;
+  background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);
+  margin-bottom:16px;
+}
+
+/* ── Narrative sections ─────────────────────── */
+.section-hero-urgent{box-shadow:0 20px 60px rgba(244,63,94,.14),inset 0 1px 0 rgba(255,255,255,.03);}
+.section-hero-strong{box-shadow:0 20px 60px rgba(124,58,237,.18),inset 0 1px 0 rgba(255,255,255,.03);}
+.section-card{box-shadow:0 18px 40px rgba(2,6,23,.28);}
+.audit-panel{background:linear-gradient(180deg,rgba(15,23,42,.78),rgba(2,6,23,.72));}
+
+/* ── Builder panel ──────────────────────────── */
+.builder-panel{
+  background:rgba(8,6,20,.97);border-left:1px solid var(--border);
+  position:fixed;top:0;right:0;bottom:0;width:420px;z-index:600;
+  display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow:-20px 0 60px rgba(0,0,0,.5);
+}
+.builder-panel.open{transform:translateX(0);}
+.bp-overlay{position:fixed;inset:0;z-index:599;background:rgba(0,0,0,.4);backdrop-filter:blur(2px);display:none;}
+.bp-overlay.open{display:block;}
+.ctype-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+.ctype-btn{padding:8px 4px;border-radius:8px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#64748b;font-size:10px;cursor:pointer;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.ctype-btn:hover{background:rgba(124,58,237,.12);color:#a78bfa;border-color:rgba(124,58,237,.3);}
+.ctype-btn.active{background:rgba(124,58,237,.25);color:#c4b5fd;border-color:rgba(124,58,237,.5);}
+.ctype-icon{font-size:18px;line-height:1;}
+.color-swatch{width:28px;height:28px;border-radius:7px;cursor:pointer;border:2px solid transparent;transition:all .15s;}
+.color-swatch.active{border-color:#fff;transform:scale(1.15);}
+#builder-preview{position:relative;flex:1;min-height:0;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;overflow:hidden;}
+#builder-preview canvas{position:absolute;inset:12px;}
+#bp-preview-msg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#334155;font-size:13px;}
+#bp-preview-spin{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(8,6,20,.7);}
+#bp-kpi-view{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;}
+.bp-label{color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:block;}
+.bp-input{width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;}
+.bp-input:focus{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.04);}
+.bp-select{width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;}
+.bp-select:focus{border-color:rgba(124,58,237,.4);}
+.bp-tab{padding:5px 10px;border-radius:6px;font-size:11px;color:#64748b;cursor:pointer;border:none;background:none;}
+.bp-tab.active{background:rgba(124,58,237,.2);color:#a78bfa;}
+
+/* ── Insight drawer ─────────────────────────── */
+#insight-drawer{position:fixed;top:0;right:-420px;bottom:0;width:400px;max-width:92vw;background:rgba(8,6,20,.98);border-left:1px solid rgba(124,58,237,.22);z-index:700;display:flex;flex-direction:column;transition:right .28s cubic-bezier(.4,0,.2,1);box-shadow:-20px 0 60px rgba(0,0,0,.5);}
+</style>
+{% endblock %}
+
+{% block content %}
+{% include "analyser/charts/partials/chart_settings_modal.html" %}
+<script src="{% static 'js/analyser/chart-actions.js' %}"></script>
+<script id="chart-mutation-config" type="application/json">{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "csrf": "{{ csrf_token }}",
+  "updateUrlTemplate": "/workspace/{{ upload.id|escapejs }}/charts/__CID__/update/"
+}</script>
+<script src="{% static 'js/analyser/chart-mutations.js' %}"></script>
+
+<!-- Builder overlay -->
+<div class="bp-overlay" id="bp-overlay" onclick="closeBuilder()"></div>
+
+<div class="g-shell">
+
+  <!-- ── Top bar ─────────────────────────────────────────────── -->
+  <div class="g-topbar">
+    <div class="g-breadcrumb">
+      <a href="{% url 'dashboard:index' %}">Dashboard</a>
+      <span style="color:#1e293b;">/</span>
+      <a href="{% url 'analyser:result' upload.id %}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ upload.original_name|safe_preview }}</a>
+      <span style="color:#1e293b;">/</span>
+      <span style="color:#94a3b8;">Charts</span>
+      <span id="chart-count-badge" style="margin-left:4px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,.15);color:#a78bfa;font-size:10px;font-weight:600;">{% if dashboard_mode == 'explorer' %}{{ charts|length }}{% elif narrative_dashboard %}{{ narrative_dashboard.visible_chart_count }}{% else %}{{ charts|length }}{% endif %}</span>
+    </div>
+
+    <div class="g-actions">
+      <!-- AI Generate -->
+      <form hx-post="{% url 'analyser:ai_regenerate_charts' upload.id %}" hx-target="#charts-container" hx-swap="innerHTML" hx-indicator="#ai-spin" style="display:contents;">
+        {% csrf_token %}
+        <button type="submit" class="ga-btn ga-btn-primary" {% if not is_pro %}disabled title="Requires Pro"{% endif %}>
+          <span id="ai-spin" class="htmx-indicator"><svg class="animate-spin" style="width:11px;height:11px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></span>
+          🤖 AI Generate
+        </button>
+      </form>
+      <form hx-post="{% url 'analyser:regenerate_charts' upload.id %}" hx-target="#charts-container" hx-swap="innerHTML" hx-indicator="#auto-spin" style="display:contents;">
+        {% csrf_token %}
+        <button type="submit" class="ga-btn ga-btn-ghost">
+          <span id="auto-spin" class="htmx-indicator"><svg class="animate-spin" style="width:11px;height:11px;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></span>
+          ✦ Auto-Generate
+        </button>
+      </form>
+      <button onclick="openBuilder()" class="ga-btn ga-btn-ghost">
+        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+        New Chart
+      </button>
+      <div class="ga-sep"></div>
+      <a href="{% url 'exports:pdf' upload.id %}?mode={{ dashboard_mode|default:'executive' }}" class="ga-btn ga-btn-ghost">PDF</a>
+      <a href="{% url 'exports:pptx' upload.id %}" class="ga-btn ga-btn-ghost">PPT</a>
+      <a href="{% url 'analyser:board_report' upload.id %}" class="ga-btn ga-btn-ghost">Board</a>
+      <div class="ga-sep"></div>
+      <a href="{% url 'analyser:result' upload.id %}" class="ga-btn ga-btn-ghost" style="color:#64748b;">← Analysis</a>
+    </div>
+  </div>
+
+  <!-- Mode tabs only — no stats clutter -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:10px;">
+    <div class="g-mode-tabs">
+      <a href="?mode=executive" class="g-mode-tab {% if dashboard_mode != 'explorer' %}active{% endif %}">Executive</a>
+      <a href="?mode=explorer" class="g-mode-tab {% if dashboard_mode == 'explorer' %}active{% endif %}">Explorer</a>
+    </div>
+  </div>
+
+  <!-- ── Unified toolbar ─────────────────────────────────────── -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <input type="text" id="chart-search" placeholder="Search charts…" class="g-search" oninput="filterCharts(this.value)">
+    <div class="g-type-pills">
+      <button class="g-pill active" data-filter="all" onclick="filterType('all',this)">All</button>
+      <button class="g-pill" data-filter="kpi" onclick="filterType('kpi',this)">KPI</button>
+      <button class="g-pill" data-filter="line" onclick="filterType('line',this)">Trends</button>
+      <button class="g-pill" data-filter="bar" onclick="filterType('bar',this)">Bars</button>
+      <button class="g-pill" data-filter="doughnut" onclick="filterType('doughnut',this)">Donut</button>
+      <button class="g-pill" data-filter="scatter" onclick="filterType('scatter',this)">Scatter</button>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:6px;">
+      <select id="gallery-sort" onchange="sortGallery(this.value)" class="g-sort">
+        <option value="manual">Order</option>
+        <option value="title-asc">A–Z</option>
+        <option value="title-desc">Z–A</option>
+        <option value="type">By type</option>
+      </select>
+      <div class="g-layout-btns">
+        <button class="g-layout-btn" onclick="setLayout(2)" id="layout-2" title="2 columns">▦</button>
+        <button class="g-layout-btn active" onclick="setLayout(3)" id="layout-3" title="3 columns">⊞</button>
+      </div>
+    </div>
+  </div>
+  <span id="visible-count" style="display:none;">{% if dashboard_mode == 'explorer' %}{{ charts|length }}{% elif narrative_dashboard %}{{ narrative_dashboard.visible_chart_count }}{% else %}{{ charts|length }}{% endif %}</span>
+
+
+
+  {% if not is_pro %}
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;background:rgba(124,58,237,.06);border:1px solid rgba(124,58,237,.15);margin-bottom:14px;">
+    <span style="font-size:14px;">🤖</span>
+    <p style="color:#94a3b8;font-size:11px;margin:0;flex:1;">AI Generate uses Claude to create perfectly tailored charts for your dataset.</p>
+    <a href="/billing/pricing/" style="padding:5px 12px;border-radius:7px;background:rgba(124,58,237,.2);color:#a78bfa;font-size:11px;text-decoration:none;font-weight:600;white-space:nowrap;">Upgrade →</a>
+  </div>
+  {% endif %}
+
+  <!-- ── Charts container ─────────────────────────────────────── -->
+  <div id="charts-container">
+    {% include 'analyser/charts/partials/chart_grid.html' %}
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CHART BUILDER PANEL (slides in from right)
+═══════════════════════════════════════════════════════════ -->
+<div class="builder-panel" id="builder-panel">
+  <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--border);flex-shrink:0;">
+    <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;">📊</div>
+    <div style="flex:1;">
+      <p style="color:#fff;font-weight:700;font-size:14px;margin:0;">Chart Builder</p>
+      <p style="color:#475569;font-size:11px;margin:0;">{{ upload.original_name|truncatechars:35 }}</p>
+    </div>
+    <button onclick="closeBuilder()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;padding:4px;">✕</button>
+  </div>
+  <div style="display:flex;gap:2px;padding:10px 16px 0;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;">
+    <button class="bp-tab active" id="bptab-build" onclick="switchBpTab('build')">🔧 Build</button>
+    <button class="bp-tab" id="bptab-quick" onclick="switchBpTab('quick')">⚡ Quick Add</button>
+  </div>
+  <div id="bp-build-tab" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px;">
+    <div style="flex-shrink:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;">Live Preview</span>
+        <button onclick="triggerPreview()" style="font-size:10px;color:#7c3aed;background:none;border:none;cursor:pointer;padding:2px 6px;border-radius:4px;">↺ Refresh</button>
+      </div>
+      <div id="builder-preview" style="height:200px;">
+        <div id="bp-preview-msg">Configure options and click Refresh</div>
+        <div id="bp-preview-spin"><svg class="animate-spin w-6 h-6" style="color:#7c3aed;" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></div>
+        <div id="bp-kpi-view">
+          <p id="bp-kpi-val" style="font-size:2.5rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;"></p>
+          <p id="bp-kpi-lbl" style="color:#64748b;font-size:12px;margin:0;"></p>
+        </div>
+        <canvas id="bp-canvas" style="position:absolute;inset:12px;"></canvas>
+      </div>
+    </div>
+    <div>
+      <label class="bp-label">Chart Type</label>
+      <div class="ctype-grid">
+        {% for val,label in chart_type_choices %}
+        <button class="ctype-btn {% if forloop.first %}active{% endif %}" data-type="{{ val }}" onclick="selectType('{{ val }}')" title="{{ label }}">
+          <span class="ctype-icon">{% if val == 'bar' %}▬{% elif val == 'horizontal_bar' %}≡{% elif val == 'line' %}∿{% elif val == 'area' %}◿{% elif val == 'scatter' %}⁘{% elif val == 'pie' %}◔{% elif val == 'doughnut' %}◎{% elif val == 'histogram' %}⬛{% elif val == 'heatmap' %}⊞{% elif val == 'kpi' %}🔢{% endif %}</span>
+          <span>{{ label|truncatechars:7 }}</span>
+        </button>
+        {% endfor %}
+      </div>
+    </div>
+    <div>
+      <label class="bp-label">Title</label>
+      <input type="text" id="bp-title" class="bp-input" placeholder="e.g. Revenue by Branch">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label class="bp-label">X Axis</label>
+        <select id="bp-x" class="bp-select" onchange="triggerPreview()">
+          <option value="">— none —</option>
+          {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="bp-label">Y Axis / Measure</label>
+        <select id="bp-y" class="bp-select" onchange="triggerPreview()">
+          <option value="">— none —</option>
+          {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label class="bp-label">Aggregation</label>
+        <select id="bp-agg" class="bp-select" onchange="triggerPreview()">
+          {% for val,label in agg_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="bp-label">Group By</label>
+        <select id="bp-group" class="bp-select" onchange="triggerPreview()">
+          <option value="">— none —</option>
+          {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="background:rgba(59,130,246,.04);border:1px solid rgba(59,130,246,.12);border-radius:10px;padding:10px 12px;">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <div style="width:8px;height:8px;border-radius:2px;background:#3b82f6;flex-shrink:0;"></div>
+        <span style="color:#60a5fa;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Additional Measures</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;max-height:90px;overflow-y:auto;">
+        {% for col in all_columns %}
+        <label style="display:flex;align-items:center;gap:5px;padding:3px 5px;border-radius:5px;cursor:pointer;">
+          <input type="checkbox" name="bp-extra" value="{{ col }}" onchange="triggerPreview()" style="accent-color:#3b82f6;width:12px;height:12px;flex-shrink:0;">
+          <span style="color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ col }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label class="bp-label">Color Palette</label>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:2px;">
+          {% for val,label in color_choices %}
+          <div class="color-swatch {% if forloop.first %}active{% endif %}" data-color="{{ val }}" title="{{ label }}" onclick="selectColor('{{ val }}')" style="background:{% if val == 'violet' %}#7c3aed{% elif val == 'blue' %}#3b82f6{% elif val == 'emerald' %}#10b981{% elif val == 'amber' %}#f59e0b{% elif val == 'rose' %}#f43f5e{% elif val == 'cyan' %}#06b6d4{% else %}linear-gradient(135deg,#7c3aed,#3b82f6,#10b981){% endif %};"></div>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <label class="bp-label">Size</label>
+        <select id="bp-size" class="bp-select">
+          {% for val,label in size_choices %}<option value="{{ val }}" {% if val == 'md' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <div>
+        <label class="bp-label">X Label</label>
+        <input type="text" id="bp-xlabel" class="bp-input" placeholder="e.g. Month">
+      </div>
+      <div>
+        <label class="bp-label">Y Label</label>
+        <input type="text" id="bp-ylabel" class="bp-input" placeholder="e.g. Revenue (LKR)">
+      </div>
+    </div>
+    <div>
+      <label class="bp-label">Insight (optional)</label>
+      <input type="text" id="bp-insight" class="bp-input" placeholder="One-line business insight">
+    </div>
+  </div>
+  <div id="bp-quick-tab" style="flex:1;overflow-y:auto;padding:14px 16px;display:none;flex-direction:column;gap:8px;">
+    <p style="color:#64748b;font-size:12px;margin:0 0 4px;">Click to instantly add common chart types:</p>
+    {% for col in numeric_columns %}
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;">
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0 0 6px;">{{ col.name|safe_preview }}</p>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <button onclick="quickAdd('bar','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#a78bfa;cursor:pointer;">▬ Bar</button>
+        <button onclick="quickAdd('line','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(59,130,246,.2);background:rgba(59,130,246,.08);color:#60a5fa;cursor:pointer;">∿ Line</button>
+        <button onclick="quickAdd('kpi','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(16,185,129,.2);background:rgba(16,185,129,.08);color:#34d399;cursor:pointer;">🔢 KPI</button>
+        <button onclick="quickAdd('histogram','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(245,158,11,.2);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;">⬛ Dist</button>
+      </div>
+    </div>
+    {% endfor %}
+    {% for col in category_columns %}
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;">
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0 0 6px;">{{ col.name|safe_preview }} <span style="color:#475569;font-size:10px;">({{ col.unique_count }} values)</span></p>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        {% if col.unique_count <= 8 %}
+        <button onclick="quickAdd('doughnut','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(124,58,237,.2);background:rgba(124,58,237,.08);color:#a78bfa;cursor:pointer;">◎ Donut</button>
+        {% endif %}
+        <button onclick="quickAdd('horizontal_bar','{{ col.name|safe_preview }}')" style="font-size:10px;padding:4px 9px;border-radius:6px;border:1px solid rgba(245,158,11,.2);background:rgba(245,158,11,.08);color:#fbbf24;cursor:pointer;">≡ H-Bar</button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div style="padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0;display:flex;gap:8px;">
+    <button onclick="closeBuilder()" style="padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#64748b;font-size:12px;cursor:pointer;flex-shrink:0;">Cancel</button>
+    <button onclick="saveBuilderChart()" id="bp-save-btn" style="flex:1;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 4px 16px rgba(124,58,237,.3);">+ Add to Gallery</button>
+  </div>
+</div>
+
+<script id="gallery-page-config" type="application/json">{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "csrf": "{{ csrf_token }}",
+  "previewUrl": "{% url 'analyser:preview_chart_data' upload.id %}",
+  "createUrl": "{% url 'analyser:create_chart' upload.id %}",
+  "reorderUrl": "{% url 'analyser:reorder_charts' upload.id %}",
+  "regenUrl": "{% url 'analyser:regenerate_charts' upload.id %}",
+  "firstCategory": "{{ category_columns.0.name|default:''|escapejs }}",
+  "liveRefreshMinutes": {% if upload.label and 'Live' in upload.label %}0{% else %}0{% endif %}
+}</script>
+<script src="{% static 'js/analyser/gallery-builder-state.js' %}"></script>
+<script src="{% static 'js/analyser/gallery-builder-preview.js' %}"></script>
+<script src="{% static 'js/analyser/gallery-controls.js' %}"></script>
+<script src="{% static 'js/analyser/gallery-page.js' %}"></script>
+
+<!-- ═══ INSIGHT DRAWER ═══ -->
+<div id="insight-drawer">
+  <div style="display:flex;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid rgba(124,58,237,.15);flex-shrink:0;">
+    <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:1rem;">💡</div>
+    <div style="flex:1;min-width:0;">
+      <p id="drawer-chart-title" style="color:#fff;font-weight:700;font-size:13px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Insights</p>
+      <p style="color:#475569;font-size:11px;margin:0;">Business intelligence panel</p>
+    </div>
+    <button onclick="closeInsightDrawer()" style="background:none;border:none;color:#64748b;cursor:pointer;font-size:18px;padding:4px;">✕</button>
+  </div>
+  <div id="drawer-body" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;"></div>
+</div>
+<div id="insight-drawer-overlay" onclick="closeInsightDrawer()" style="display:none;position:fixed;inset:0;z-index:699;background:rgba(0,0,0,.25);backdrop-filter:blur(1px);"></div>
+
+<script>
+function toggleInsightInline(cid) {
+  var panel = document.getElementById('insight-inline-' + cid);
+  var lbl   = document.querySelector('.insight-btn-label-' + cid);
+  if (!panel) return;
+  var open = panel.style.display === 'flex' || panel.style.display === 'block';
+  panel.style.display = open ? 'none' : 'flex';
+  panel.style.flexDirection = 'column';
+  if (lbl) lbl.textContent = open ? 'Insights' : 'Hide';
+}
+function openInsightDrawer(cid) {
+  var dataEl = document.getElementById('insight-data-' + cid);
+  if (!dataEl) return;
+  var d = {};
+  try { d = JSON.parse(dataEl.textContent); } catch(e) { return; }
+  document.getElementById('drawer-chart-title').textContent = d.title || 'Insights';
+  var body = document.getElementById('drawer-body');
+  body.innerHTML = '';
+  function card(icon, label, text, bg, border, color) {
+    if (!text) return '';
+    return '<div style="padding:12px 14px;border-radius:14px;background:' + bg + ';border:1px solid ' + border + ';">' +
+      '<div style="font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:' + color + ';margin-bottom:5px;">' + icon + ' ' + label + '</div>' +
+      '<div style="font-size:12px;color:#e2e8f0;line-height:1.6;">' + text + '</div></div>';
+  }
+  var html = '';
+  if (d.insight) html += card('🔎','Insight', d.insight, 'rgba(124,58,237,.08)', 'rgba(124,58,237,.2)', '#a78bfa');
+  if (d.story)   html += card('🧠','Story',   d.story,   'rgba(124,58,237,.06)', 'rgba(124,58,237,.18)', '#c4b5fd');
+  if (d.why)     html += card('🎯','Why it matters', d.why, 'rgba(255,255,255,.03)', 'rgba(255,255,255,.08)', '#94a3b8');
+  if (d.how)     html += card('👀','How to read', d.how, 'rgba(255,255,255,.03)', 'rgba(255,255,255,.08)', '#94a3b8');
+  if (d.driver)  html += card('🧭','Read', d.driver, 'rgba(59,130,246,.06)', 'rgba(59,130,246,.18)', '#93c5fd');
+  if (d.risk)    html += card('⚠️','Risk', d.risk, 'rgba(244,63,94,.06)', 'rgba(244,63,94,.18)', '#fda4af');
+  if (d.action || d.next) html += card('⚡','Next action', d.action||d.next, 'rgba(16,185,129,.08)', 'rgba(16,185,129,.2)', '#6ee7b7');
+  if (!html) html = '<p style="color:#475569;font-size:12px;text-align:center;padding:24px 0;">No insights available for this chart.</p>';
+  body.innerHTML = html;
+  document.getElementById('insight-drawer').style.right = '0';
+  document.getElementById('insight-drawer-overlay').style.display = 'block';
+}
+function closeInsightDrawer() {
+  document.getElementById('insight-drawer').style.right = '-420px';
+  document.getElementById('insight-drawer-overlay').style.display = 'none';
+}
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeInsightDrawer(); });
+</script>
+{% endblock %}

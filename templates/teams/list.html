@@ -1,0 +1,80 @@
+{% extends 'app_base.html' %}
+{% block title %}Teams{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:28px 20px 60px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+    <div>
+      <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;">Teams</h1>
+      <p style="color:#64748b;font-size:13px;margin:4px 0 0;">Collaborate with your organisation</p>
+    </div>
+    <button onclick="document.getElementById('create-team-modal').style.display='flex'"
+            class="btn-primary" style="padding:9px 18px;font-size:13px;">+ Create Team</button>
+  </div>
+
+  {% if owned_teams or member_teams %}
+    {% if owned_teams %}
+    <p style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Your teams</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;">
+    {% for team in owned_teams %}
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(124,58,237,.15);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;flex-shrink:0;">
+        {{ team.name|slice:":1"|upper }}
+      </div>
+      <div style="flex:1;">
+        <p style="color:#e2e8f0;font-weight:600;font-size:14px;margin:0;">{{ team.name }}</p>
+        <p style="color:#475569;font-size:11px;margin:2px 0 0;">{{ team.memberships.count }} member{{ team.memberships.count|pluralize }} · Owner</p>
+      </div>
+      <a href="{% url 'teams:detail' team.slug %}" class="btn-primary" style="font-size:11px;padding:6px 14px;">Open →</a>
+    </div>
+    {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if member_teams %}
+    <p style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Member of</p>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+    {% for ms in member_teams %}
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:16px;">
+      <div style="width:40px;height:40px;border-radius:10px;background:rgba(59,130,246,.2);display:flex;align-items:center;justify-content:center;color:#60a5fa;font-weight:700;font-size:16px;flex-shrink:0;">
+        {{ ms.team.name|slice:":1"|upper }}
+      </div>
+      <div style="flex:1;">
+        <p style="color:#e2e8f0;font-weight:600;font-size:14px;margin:0;">{{ ms.team.name }}</p>
+        <p style="color:#475569;font-size:11px;margin:2px 0 0;">{{ ms.team.memberships.count }} members · {{ ms.role|title }}</p>
+      </div>
+      <a href="{% url 'teams:detail' ms.team.slug %}" class="btn-secondary" style="font-size:11px;padding:6px 14px;">Open →</a>
+    </div>
+    {% endfor %}
+    </div>
+    {% endif %}
+  {% else %}
+  <div style="text-align:center;padding:60px 20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);border-radius:16px;">
+    <div style="font-size:3rem;margin-bottom:12px;">👥</div>
+    <p style="color:#e2e8f0;font-weight:600;margin-bottom:8px;">No teams yet</p>
+    <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Create a team to collaborate and share datasets with colleagues.</p>
+    <button onclick="document.getElementById('create-team-modal').style.display='flex'" class="btn-primary" style="padding:10px 24px;">Create your first team</button>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Create team modal -->
+<div id="create-team-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(4,2,12,.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e0b1e;border:1px solid rgba(124,58,237,.3);border-radius:20px;width:min(440px,92vw);padding:28px;">
+    <p style="color:#fff;font-weight:700;font-size:1.1rem;margin:0 0 20px;">Create Team</p>
+    <form method="post" action="{% url 'teams:create' %}">
+      {% csrf_token %}
+      <div style="margin-bottom:14px;">
+        <label style="color:#64748b;font-size:11px;display:block;margin-bottom:5px;">Team Name *</label>
+        <input type="text" name="name" required placeholder="e.g. Analytics Team"
+               style="width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+        <button type="button" onclick="document.getElementById('create-team-modal').style.display='none'"
+                style="padding:9px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#64748b;font-size:12px;cursor:pointer;">Cancel</button>
+        <button type="submit" class="btn-primary" style="padding:9px 20px;font-size:12px;">Create Team</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

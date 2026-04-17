@@ -1,0 +1,202 @@
+{% extends 'public_base.html' %}
+{% block title %}Pricing — Nexyza{% endblock %}
+{% block content %}
+<div style="max-width:1100px;margin:0 auto;padding:60px 20px;">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:56px;">
+    <div style="display:inline-block;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:999px;padding:6px 20px;font-size:13px;color:#a78bfa;margin-bottom:20px;">Simple, transparent pricing</div>
+    <h1 style="font-size:3rem;font-weight:800;color:#fff;margin:0 0 16px;line-height:1.1;">
+      Turn your data into<br><span style="background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">decisions, faster</span>
+    </h1>
+    <p style="color:#94a3b8;font-size:1.1rem;max-width:520px;margin:0 auto;">Start free. Upgrade when you need AI insights, live connectors, and auto-refreshing dashboards.</p>
+
+    {% if not billing_enabled %}
+    <div style="display:inline-flex;align-items:center;gap:10px;margin-top:28px;padding:12px 24px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:12px;">
+      <span style="font-size:18px;">🚀</span>
+      <div style="text-align:left;">
+        <p style="color:#fbbf24;font-weight:700;font-size:14px;margin:0 0 2px;">Paid plans coming soon</p>
+        <p style="color:#78716c;font-size:12px;margin:0;">We're finalising our payment setup. The Free plan is fully available now.</p>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Billing toggle -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:32px;">
+      <span id="lbl-monthly" style="color:#e2e8f0;font-size:14px;font-weight:600;">Monthly</span>
+      <button id="billing-toggle" onclick="toggleBilling()"
+              style="position:relative;width:52px;height:28px;background:rgba(124,58,237,.4);border:1px solid rgba(124,58,237,.5);border-radius:999px;cursor:pointer;transition:.2s;">
+        <span id="toggle-dot" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:#a78bfa;border-radius:50%;transition:.2s;"></span>
+      </button>
+      <span id="lbl-yearly" style="color:#94a3b8;font-size:14px;">Yearly <span style="background:rgba(16,185,129,.2);color:#34d399;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;">SAVE 30%</span></span>
+    </div>
+  </div>
+
+  <!-- Pricing cards -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:start;">
+
+    <!-- FREE -->
+    <div style="background:rgba(15,23,42,.6);border:1px solid rgba(51,65,85,.6);border-radius:20px;padding:32px;">
+      <div style="margin-bottom:24px;">
+        <p style="color:#94a3b8;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;">Free</p>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span style="font-size:2.8rem;font-weight:800;color:#fff;">$0</span>
+          <span style="color:#64748b;font-size:14px;">/month</span>
+        </div>
+        <p style="color:#64748b;font-size:13px;margin:6px 0 0;">Forever free · No credit card</p>
+      </div>
+      <a href="/accounts/signup/" style="display:block;text-align:center;padding:12px;border:1px solid rgba(124,58,237,.4);border-radius:12px;color:#a78bfa;font-weight:600;font-size:14px;text-decoration:none;transition:.15s;"
+         onmouseover="this.style.background='rgba(124,58,237,.15)'" onmouseout="this.style.background='transparent'">
+        Get started free →
+      </a>
+      <ul style="list-style:none;padding:0;margin:24px 0 0;">
+        {% for f in free_features %}
+        <li style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,.3);font-size:14px;color:#94a3b8;">
+          <span style="color:#4ade80;flex-shrink:0;margin-top:1px;">✓</span> {{ f }}
+        </li>{% endfor %}
+      </ul>
+    </div>
+
+    <!-- PLUS (highlighted) -->
+    <div style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.1));border:2px solid rgba(124,58,237,.5);border-radius:20px;padding:32px;position:relative;">
+      <div style="position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:11px;font-weight:700;padding:4px 16px;border-radius:999px;white-space:nowrap;">MOST POPULAR</div>
+      <div style="margin-bottom:24px;">
+        <p style="color:#a78bfa;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;">Plus</p>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span id="plus-price" style="font-size:2.8rem;font-weight:800;color:#fff;">$19</span>
+          <span style="color:#64748b;font-size:14px;" id="plus-period">/month</span>
+        </div>
+        <p style="color:#64748b;font-size:13px;margin:6px 0 0;" id="plus-note">Billed monthly</p>
+      </div>
+      {% if billing_enabled %}
+      <a id="plus-btn" href="{% url 'billing:checkout' 'plus_monthly' %}"
+         style="display:block;text-align:center;padding:12px;background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:12px;color:#fff;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 4px 20px rgba(124,58,237,.35);">
+        Start Plus plan →
+      </a>
+      {% else %}
+      <div style="display:block;text-align:center;padding:12px;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:12px;color:#a78bfa;font-weight:600;font-size:14px;cursor:default;">
+        🚀 Coming Soon
+      </div>
+      {% endif %}
+      <ul style="list-style:none;padding:0;margin:24px 0 0;">
+        {% for f in plus_features %}
+        <li style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(124,58,237,.2);font-size:14px;color:#e2e8f0;">
+          <span style="color:#a78bfa;flex-shrink:0;margin-top:1px;">✓</span> {{ f }}
+        </li>{% endfor %}
+      </ul>
+    </div>
+
+    <!-- PRO -->
+    <div style="background:rgba(15,23,42,.6);border:1px solid rgba(51,65,85,.6);border-radius:20px;padding:32px;">
+      <div style="margin-bottom:24px;">
+        <p style="color:#94a3b8;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;">Pro</p>
+        <div style="display:flex;align-items:baseline;gap:4px;">
+          <span id="pro-price" style="font-size:2.8rem;font-weight:800;color:#fff;">$49</span>
+          <span style="color:#64748b;font-size:14px;" id="pro-period">/month</span>
+        </div>
+        <p style="color:#64748b;font-size:13px;margin:6px 0 0;" id="pro-note">Billed monthly</p>
+      </div>
+      {% if billing_enabled %}
+      <a id="pro-btn" href="{% url 'billing:checkout' 'pro_monthly' %}"
+         style="display:block;text-align:center;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.15);border-radius:12px;color:#e2e8f0;font-weight:600;font-size:14px;text-decoration:none;transition:.15s;"
+         onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">
+        Start Pro plan →
+      </a>
+      {% else %}
+      <div style="display:block;text-align:center;padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.1);border-radius:12px;color:#475569;font-weight:600;font-size:14px;cursor:default;">
+        🚀 Coming Soon
+      </div>
+      {% endif %}
+      <ul style="list-style:none;padding:0;margin:24px 0 0;">
+        {% for f in pro_features %}
+        <li style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid rgba(51,65,85,.3);font-size:14px;color:#94a3b8;">
+          <span style="color:#4ade80;flex-shrink:0;margin-top:1px;">✓</span> {{ f }}
+        </li>{% endfor %}
+      </ul>
+    </div>
+  </div>
+
+  <!-- Feature comparison table -->
+  <div style="margin-top:64px;">
+    <h2 style="text-align:center;color:#fff;font-size:1.5rem;font-weight:700;margin-bottom:32px;">Full feature comparison</h2>
+    <div style="background:rgba(15,23,42,.6);border:1px solid rgba(51,65,85,.4);border-radius:20px;overflow:hidden;">
+      <table style="width:100%;border-collapse:collapse;font-size:14px;">
+        <thead>
+          <tr style="background:rgba(124,58,237,.1);">
+            <th style="text-align:left;padding:14px 20px;color:#94a3b8;font-weight:600;width:40%;">Feature</th>
+            <th style="text-align:center;padding:14px;color:#94a3b8;font-weight:600;">Free</th>
+            <th style="text-align:center;padding:14px;color:#a78bfa;font-weight:700;background:rgba(124,58,237,.08);">Plus</th>
+            <th style="text-align:center;padding:14px;color:#94a3b8;font-weight:600;">Pro</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison_rows %}
+          <tr style="border-top:1px solid rgba(51,65,85,.3);">
+            <td style="padding:12px 20px;color:#cbd5e1;">{{ row.feature }}</td>
+            <td style="text-align:center;padding:12px;color:{% if row.free == '✗' %}#475569{% else %}#94a3b8{% endif %};">{{ row.free }}</td>
+            <td style="text-align:center;padding:12px;background:rgba(124,58,237,.04);color:{% if row.plus == '✗' %}#475569{% else %}#e2e8f0{% endif %};">{{ row.plus }}</td>
+            <td style="text-align:center;padding:12px;color:{% if row.pro == '✗' %}#475569{% else %}#94a3b8{% endif %};">{{ row.pro }}</td>
+          </tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Token explanation -->
+  <div style="margin-top:40px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:16px;padding:28px 32px;">
+    <h3 style="color:#a78bfa;margin:0 0 12px;font-size:1rem;font-weight:700;">💡 How AI tokens work</h3>
+    <p style="color:#94a3b8;margin:0;font-size:14px;line-height:1.7;">
+      Each AI chart generation and insight uses tokens from your monthly budget.
+      <strong style="color:#e2e8f0;">Plus gets 200,000 tokens/month (~200 chart generations)</strong> and
+      <strong style="color:#e2e8f0;">Pro gets 2,000,000 tokens/month (~2,000 chart generations)</strong>.
+      Unused tokens don't roll over. Your budget resets on the 1st of each month.
+      You can always see your usage in <a href="/accounts/settings/" style="color:#a78bfa;">Settings → AI Usage</a>.
+    </p>
+  </div>
+
+  <!-- FAQs -->
+  <div style="margin-top:64px;">
+    <h2 style="text-align:center;color:#fff;font-size:1.5rem;font-weight:700;margin-bottom:32px;">Frequently asked questions</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      {% for faq in faqs %}
+      <div style="background:rgba(15,23,42,.6);border:1px solid rgba(51,65,85,.4);border-radius:14px;padding:20px 24px;">
+        <p style="color:#e2e8f0;font-weight:600;margin:0 0 8px;font-size:14px;">{{ faq.q }}</p>
+        <p style="color:#64748b;font-size:13px;margin:0;line-height:1.6;">{{ faq.a }}</p>
+      </div>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<script>
+var yearly = false;
+var prices = {
+  plus:  {monthly: '$19', yearly: '$13'},
+  pro:   {monthly: '$49', yearly: '$34'},
+};
+var urls = {
+  plus:  {monthly: '{% url "billing:checkout" "plus_monthly" %}', yearly: '{% url "billing:checkout" "plus_yearly" %}'},
+  pro:   {monthly: '{% url "billing:checkout" "pro_monthly" %}',  yearly: '{% url "billing:checkout" "pro_yearly" %}'},
+};
+function toggleBilling() {
+  yearly = !yearly;
+  var dot = document.getElementById('toggle-dot');
+  var lm  = document.getElementById('lbl-monthly');
+  var ly  = document.getElementById('lbl-yearly');
+  dot.style.left = yearly ? '29px' : '3px';
+  lm.style.color  = yearly ? '#94a3b8' : '#e2e8f0';
+  ly.style.color  = yearly ? '#e2e8f0' : '#94a3b8';
+  var key = yearly ? 'yearly' : 'monthly';
+  document.getElementById('plus-price').textContent = prices.plus[key];
+  document.getElementById('plus-period').textContent = yearly ? '/mo · billed yearly' : '/month';
+  document.getElementById('plus-note').textContent = yearly ? 'Save 30% vs monthly' : 'Billed monthly';
+  document.getElementById('pro-price').textContent  = prices.pro[key];
+  document.getElementById('pro-period').textContent  = yearly ? '/mo · billed yearly' : '/month';
+  document.getElementById('pro-note').textContent   = yearly ? 'Save 30% vs monthly' : 'Billed monthly';
+  var planKey = yearly ? 'plus_yearly' : 'plus_monthly';
+  var plusBtn = document.getElementById('plus-btn');
+  var proBtn  = document.getElementById('pro-btn');
+  if(plusBtn) plusBtn.href = urls.plus[key];
+  if(proBtn)  proBtn.href  = urls.pro[key];
+}
+</script>
+{% endblock %}

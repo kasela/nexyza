@@ -1,0 +1,46 @@
+{% extends 'app_base.html' %}
+{% block title %}Notifications — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div><h1 class="text-3xl font-bold text-white">Notifications</h1>{% if unread %}<p class="text-violet-300 text-sm mt-1">{{ unread }} unread alert{{ unread|pluralize }}</p>{% endif %}</div>
+    <div class="flex gap-2">
+      <form method="post" action="{% url 'notifications:mark_all_read' %}">{% csrf_token %}<button class="btn-secondary text-xs py-2 px-4">Mark All Read</button></form>
+      <button onclick="document.getElementById('rule-modal').classList.remove('hidden')" class="btn-primary text-xs py-2 px-4">+ Add Alert Rule</button>
+    </div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 space-y-3">
+      {% for n in notifications %}<div class="glass rounded-xl p-4 flex items-start gap-3 {% if not n.is_read %}border border-violet-700/30{% endif %}">
+        <span class="text-lg shrink-0">{% if n.level == 'alert' %}🔴{% elif n.level == 'warning' %}🟡{% else %}🔵{% endif %}</span>
+        <div class="flex-1"><p class="text-white text-sm font-medium">{{ n.title }}</p><p class="text-slate-400 text-xs">{{ n.body }}</p><p class="text-slate-600 text-xs mt-1">{{ n.created_at|timesince }} ago</p></div>
+        {% if not n.is_read %}<form method="post" action="{% url 'notifications:mark_read' n.id %}">{% csrf_token %}<button class="text-slate-600 hover:text-slate-400 text-xs transition-colors">Mark read</button></form>{% endif %}
+      </div>{% empty %}<div class="glass rounded-2xl p-12 text-center"><div class="text-4xl mb-3">🔔</div><p class="text-white font-semibold mb-1">No notifications</p><p class="text-slate-400 text-sm">Set up alert rules to get notified when your data changes.</p></div>{% endfor %}
+    </div>
+    <div class="glass rounded-2xl p-5">
+      <p class="text-white font-semibold mb-4">Alert Rules ({{ rules|length }})</p>
+      <div class="space-y-3">
+        {% for rule in rules %}<div class="glass-sm rounded-xl p-3"><p class="text-white text-xs font-medium">{{ rule.name }}</p><p class="text-slate-500 text-xs truncate">{{ rule.upload.original_name }}</p><p class="text-violet-300 text-xs font-mono">{{ rule.column }} {{ rule.metric }} {{ rule.get_operator_display }} {{ rule.threshold }}</p>
+          <div class="flex gap-2 mt-2"><form method="post" action="{% url 'notifications:check_now' rule.upload.id %}">{% csrf_token %}<button class="text-xs text-slate-500 hover:text-violet-300">Check now</button></form>
+          <form method="post" action="{% url 'notifications:delete_rule' rule.id %}">{% csrf_token %}<button class="text-xs text-slate-600 hover:text-red-400 ml-auto">Delete</button></form></div>
+        </div>{% empty %}<p class="text-slate-500 text-sm">No rules yet.</p>{% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+<div id="rule-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="glass rounded-2xl p-8 w-full max-w-md glow">
+    <div class="flex items-center justify-between mb-5"><h2 class="text-white font-bold text-lg">Add Alert Rule</h2><button onclick="document.getElementById('rule-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-xl">&times;</button></div>
+    <form method="post" action="{% url 'notifications:create_rule' %}" class="space-y-4">{% csrf_token %}
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Rule Name</label><input type="text" name="name" required class="input-field text-sm" placeholder="Revenue spike alert"></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">File</label><select name="upload_id" required class="input-field text-sm"><option value="">Select…</option>{% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name }}</option>{% endfor %}</select></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Column</label><input type="text" name="column" required class="input-field text-sm" placeholder="revenue"></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Metric</label><select name="metric" class="input-field text-sm"><option value="mean">Mean</option><option value="max">Max</option><option value="min">Min</option><option value="null_pct">Null %</option><option value="row_count">Row Count</option></select></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Operator</label><select name="operator" class="input-field text-sm"><option value="gt">Greater than</option><option value="lt">Less than</option><option value="eq">Equals</option></select></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Threshold</label><input type="number" step="any" name="threshold" required class="input-field text-sm"></div>
+      </div>
+      <button type="submit" class="btn-primary w-full justify-center py-3">Create Rule</button>
+    </form>
+  </div>
+</div>{% endblock %}

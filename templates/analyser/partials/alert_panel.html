@@ -1,0 +1,19 @@
+<div class="glass rounded-2xl p-5" style="border:1px solid rgba(124,58,237,0.15);">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-white font-semibold">Smart alerts</h3>
+    <span class="text-xs text-slate-400">Phase 4</span>
+  </div>
+  <div class="space-y-3">
+    {% for alert in alerts %}
+      <div class="rounded-xl px-4 py-3" style="background:rgba(255,255,255,.04);border:1px solid {% if alert.level == 'high' %}rgba(248,113,113,.28){% elif alert.level == 'medium' %}rgba(251,191,36,.24){% else %}rgba(52,211,153,.18){% endif %};">
+        <div class="flex items-center justify-between gap-3">
+          <p class="text-sm text-slate-200 font-medium">{{ alert.title }}</p>
+          <span class="text-[10px] uppercase tracking-wide {% if alert.level == 'high' %}text-rose-300{% elif alert.level == 'medium' %}text-amber-300{% else %}text-emerald-300{% endif %}">{{ alert.level }}</span>
+        </div>
+        <p class="text-xs text-slate-400 mt-1">{{ alert.detail }}</p>
+      </div>
+    {% empty %}
+      <p class="text-sm text-slate-400">No active alerts yet.</p>
+    {% endfor %}
+  </div>
+</div>

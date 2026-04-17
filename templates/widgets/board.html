@@ -1,0 +1,127 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Widget Dashboard — Nexyza{% endblock %}
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-7">
+  <div class="flex items-center justify-between mb-7">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Widget Dashboard</h1>
+      <p class="text-slate-400 text-sm mt-0.5">Pin charts, KPIs, and insights to your personal board.</p>
+    </div>
+    <button onclick="document.getElementById('add-widget-panel').classList.toggle('hidden')" class="btn-primary text-sm py-2.5 px-5">+ Add Widget</button>
+  </div>
+
+  <!-- Add widget panel -->
+  <div id="add-widget-panel" class="hidden glass rounded-2xl p-6 mb-7 glow">
+    <div class="flex items-center justify-between mb-5">
+      <h2 class="text-white font-semibold">Add Widget</h2>
+      <button onclick="document.getElementById('add-widget-panel').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-xl">✕</button>
+    </div>
+    <form method="post" action="{% url 'widgets:add' %}" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {% csrf_token %}
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Widget Type</label>
+        <select name="widget_type" id="wtype" class="input-field text-sm" onchange="toggleWidgetFields(this.value)">
+          {% for val,label in widget_types %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+        </select></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Title</label>
+        <input type="text" name="title" placeholder="Widget title" class="input-field text-sm"></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Size</label>
+        <select name="size" class="input-field text-sm">
+          {% for val,label in size_choices %}<option value="{{ val }}" {% if val == '2x1' %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select></div>
+      <div id="field-chart" class="hidden sm:col-span-3">
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Chart</label>
+        <select name="chart_id" class="input-field text-sm">
+          <option value="">Select chart…</option>
+          {% for c in charts %}<option value="{{ c.id }}">{{ c.title }} ({{ c.upload.original_name }})</option>{% endfor %}
+        </select></div>
+      <div id="field-upload" class="hidden sm:col-span-3">
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">File</label>
+        <select name="upload_id" class="input-field text-sm">
+          <option value="">Select file…</option>
+          {% for u in uploads %}<option value="{{ u.id }}">{{ u.original_name }}</option>{% endfor %}
+        </select></div>
+      <div id="field-text" class="hidden sm:col-span-3">
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Content</label>
+        <textarea name="content" rows="2" class="input-field text-sm" placeholder="Your note or text…"></textarea></div>
+      <div class="sm:col-span-3">
+        <button type="submit" class="btn-primary py-2.5 px-7">Add to Dashboard</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Widget grid -->
+  <div id="widget-grid" class="grid gap-5" style="grid-template-columns:repeat(3,1fr)">
+    {% for w in widgets %}
+    <div class="widget-card group glass rounded-2xl overflow-hidden relative"
+         id="widget-{{ w.id }}" data-id="{{ w.id }}"
+         style="grid-column:{% if w.size == '1x1' %}span 1{% elif w.size == '3x1' %}span 3{% elif w.size == '2x2' %}span 2{% else %}span 2{% endif %}">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <div class="flex items-center gap-2">
+          <span class="drag-handle cursor-grab text-slate-600 hover:text-slate-400 select-none">⠿</span>
+          <p class="text-white text-sm font-semibold truncate">{{ w.title }}</p>
+        </div>
+        <form method="post" action="{% url 'widgets:delete' w.id %}"
+              hx-post="{% url 'widgets:delete' w.id %}"
+              hx-target="#widget-{{ w.id }}" hx-swap="outerHTML">
+          {% csrf_token %}
+          <button type="submit" class="opacity-0 group-hover:opacity-100 p-1 text-slate-600 hover:text-red-400 transition-all">✕</button>
+        </form>
+      </div>
+      <div class="px-4 pb-4">
+        {% if w.widget_type == 'chart' and w.chart_config %}
+          {% with d=w.chart_config.cached_data %}
+          {% if d and not d.error and d.labels %}
+          <div style="height:180px;position:relative"><canvas id="wc-{{ w.id }}"></canvas></div>
+          <script>(function(){
+            const d={{ d|jsonify|safe }};
+            const t=d.chart_type==='area'?'line':(d.chart_type||'bar');
+            Chart.defaults.color='#94a3b8';
+            new Chart(document.getElementById('wc-{{ w.id }}'),{type:t,data:{labels:d.labels,datasets:d.datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:(d.datasets||[]).length>1,labels:{color:'#94a3b8',font:{size:10}}}},scales:t!=='pie'&&t!=='doughnut'?{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#64748b',font:{size:10},maxTicksLimit:8}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:10}}}}:undefined}});
+          })();</script>
+          {% elif d.kpi %}
+          <div class="flex flex-col items-center justify-center py-6">
+            <p class="text-4xl font-bold gradient-text">{{ d.value }}</p>
+            <p class="text-slate-400 text-xs mt-1">{{ d.label }}</p>
+          </div>
+          {% else %}<p class="text-slate-600 text-sm text-center py-8">No chart data</p>{% endif %}
+          {% endwith %}
+        {% elif w.widget_type == 'kpi' %}
+          <div class="flex flex-col items-center justify-center py-6">
+            <p class="text-4xl font-bold gradient-text">—</p>
+            <p class="text-slate-400 text-xs mt-1">{{ w.config.column }} {{ w.config.metric }}</p>
+          </div>
+        {% elif w.widget_type == 'text' %}
+          <p class="text-slate-300 text-sm leading-relaxed">{{ w.config.content }}</p>
+        {% elif w.widget_type == 'insights' and w.upload %}
+          <p class="text-slate-400 text-xs leading-relaxed line-clamp-6">{{ w.upload.ai_insights|truncatechars:300 }}</p>
+        {% else %}<p class="text-slate-600 text-sm text-center py-4">{{ w.get_widget_type_display }}</p>{% endif %}
+      </div>
+    </div>
+    {% empty %}
+    <div class="col-span-3 glass rounded-2xl p-16 text-center">
+      <div class="text-5xl mb-4">🧩</div>
+      <p class="text-white font-semibold mb-1">No widgets yet</p>
+      <p class="text-slate-400 text-sm">Add charts, KPIs, and notes to personalise your dashboard.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+function toggleWidgetFields(type) {
+  ['chart','upload','text'].forEach(f => document.getElementById('field-'+f)?.classList.add('hidden'));
+  if (type === 'chart') document.getElementById('field-chart')?.classList.remove('hidden');
+  else if (['kpi','stats','table','insights'].includes(type)) document.getElementById('field-upload')?.classList.remove('hidden');
+  else if (type === 'text') document.getElementById('field-text')?.classList.remove('hidden');
+}
+toggleWidgetFields('chart');
+document.addEventListener('DOMContentLoaded',()=>{
+  const g = document.getElementById('widget-grid');
+  if(g&&typeof Sortable!=='undefined') Sortable.create(g,{handle:'.drag-handle',animation:180,ghostClass:'opacity-30',
+    onEnd:()=>{const order=[...g.querySelectorAll('.widget-card')].map(e=>e.dataset.id);fetch('{% url "widgets:reorder" %}',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'},body:JSON.stringify({order})});}});
+});
+</script>
+{% endblock %}

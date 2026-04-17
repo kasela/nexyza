@@ -1,0 +1,112 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Roles — {{ team.name }}{% endblock %}
+{% block content %}
+<div style="max-width:900px;margin:0 auto;padding:28px 20px 60px;">
+  <div style="margin-bottom:24px;">
+    <div style="font-size:11px;color:#475569;margin-bottom:6px;">
+      <a href="{% url 'teams:list' %}" style="color:#475569;text-decoration:none;">Teams</a> ›
+      <a href="{% url 'teams:detail' team.slug %}" style="color:#475569;text-decoration:none;">{{ team.name }}</a> › Roles
+    </div>
+    <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;">Role Manager</h1>
+    <p style="color:#64748b;font-size:13px;margin:4px 0 0;">{{ team.name }} · Define what each role can do</p>
+  </div>
+
+  <!-- Default Roles -->
+  <p style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Built-in Roles</p>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:28px;">
+    {% for role_name, perms in default_roles.items %}
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(124,58,237,.12);border-radius:12px;padding:14px 16px;">
+      <p style="color:#a78bfa;font-weight:600;font-size:13px;text-transform:capitalize;margin:0 0 8px;">{{ role_name }}</p>
+      <p style="color:#64748b;font-size:10px;margin:0;">{{ perms|length }} permission{{ perms|length|pluralize }}</p>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px;">
+        {% for p in perms|slice:":4" %}
+        <span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(124,58,237,.15);color:#7c3aed;">{{ p|truncatechars:14 }}</span>
+        {% endfor %}
+        {% if perms|length > 4 %}<span style="font-size:9px;color:#475569;">+{{ perms|length|add:"-4" }} more</span>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Custom Roles -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+    <p style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin:0;">Custom Roles</p>
+    <button onclick="document.getElementById('create-role-modal').style.display='flex'" class="btn-primary" style="font-size:11px;padding:6px 14px;">+ New Role</button>
+  </div>
+
+  {% if roles %}
+  <div style="display:flex;flex-direction:column;gap:8px;">
+  {% for role in roles %}
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:14px 18px;">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;">
+      <div>
+        <p style="color:#e2e8f0;font-weight:600;font-size:13px;margin:0 0 4px;">{{ role.name }}</p>
+        {% if role.description %}<p style="color:#475569;font-size:12px;margin:0 0 8px;">{{ role.description }}</p>{% endif %}
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        {% for perm in role.permissions %}
+          <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(59,130,246,.12);color:#60a5fa;">{{ perm|replace:"_" }}</span>
+        {% endfor %}
+        </div>
+      </div>
+      <form method="post" action="{% url 'roles:delete' team.slug role.id %}">
+        {% csrf_token %}
+        <button style="background:none;border:none;color:#475569;cursor:pointer;font-size:12px;padding:4px;" title="Delete role">🗑</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+  {% else %}
+  <p style="color:#475569;font-size:13px;text-align:center;padding:24px;">No custom roles yet. Create one to define granular permissions.</p>
+  {% endif %}
+
+  <!-- All permissions reference -->
+  <div style="margin-top:28px;">
+    <p style="color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Available Permissions</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;">
+    {% for val,label in all_permissions %}
+    <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:8px 12px;">
+      <p style="color:#94a3b8;font-size:12px;margin:0 0 2px;">{{ label }}</p>
+      <p style="color:#334155;font-size:10px;font-family:monospace;margin:0;">{{ val }}</p>
+    </div>
+    {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Create Role Modal -->
+<div id="create-role-modal" style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(4,2,12,.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)this.style.display='none'">
+  <div style="background:#0e0b1e;border:1px solid rgba(124,58,237,.3);border-radius:20px;width:min(520px,92vw);padding:28px;max-height:80vh;overflow-y:auto;">
+    <p style="color:#fff;font-weight:700;font-size:1rem;margin:0 0 16px;">Create Custom Role</p>
+    <form method="post" action="{% url 'roles:create' team.slug %}">
+      {% csrf_token %}
+      <div style="margin-bottom:12px;">
+        <label style="color:#64748b;font-size:11px;display:block;margin-bottom:4px;">Role Name *</label>
+        <input type="text" name="name" required placeholder="e.g. Data Analyst"
+               style="width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="color:#64748b;font-size:11px;display:block;margin-bottom:4px;">Description</label>
+        <input type="text" name="description" placeholder="What can this role do?"
+               style="width:100%;padding:8px 12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;">
+      </div>
+      <label style="color:#64748b;font-size:11px;display:block;margin-bottom:8px;">Permissions</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:200px;overflow-y:auto;border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px;">
+      {% for val,label in all_permissions %}
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 6px;border-radius:6px;" onmouseover="this.style.background='rgba(124,58,237,.08)'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" name="permissions" value="{{ val }}" style="accent-color:#7c3aed;width:13px;height:13px;">
+          <span style="color:#94a3b8;font-size:11px;">{{ label }}</span>
+        </label>
+      {% endfor %}
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px;">
+        <button type="button" onclick="document.getElementById('create-role-modal').style.display='none'"
+                style="padding:8px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#64748b;font-size:12px;cursor:pointer;">Cancel</button>
+        <button type="submit" class="btn-primary" style="padding:8px 20px;font-size:12px;">Create Role</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

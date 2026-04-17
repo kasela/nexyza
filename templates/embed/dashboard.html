@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ upload.original_name }}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --bg:#0d0b17;--surface:rgba(30,27,46,.8);--border:rgba(139,92,246,.12);
+    --text:#e2e0f0;--muted:#94a3b8;--dim:#475569;--primary:#7c3aed;--accent:#3b82f6;
+  }
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;padding:16px;}
+  .header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;}
+  .header h2{font-size:14px;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .header-meta{font-size:11px;color:var(--dim);white-space:nowrap;}
+  .theme-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--muted);font-size:11px;padding:4px 10px;cursor:pointer;transition:.15s;}
+  .theme-btn:hover{background:rgba(255,255,255,.1);}
+  .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+  .filter-chip{padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--muted);font-size:11px;cursor:pointer;transition:.15s;}
+  .filter-chip:hover,.filter-chip.active{background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4);color:#a78bfa;}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;transition:.15s;}
+  .card:hover{border-color:rgba(124,58,237,.3);}
+  .card h3{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .card h3 .badge{font-size:9px;padding:1px 5px;border-radius:4px;background:rgba(124,58,237,.2);color:#a78bfa;margin-left:5px;text-transform:uppercase;}
+  .chart-wrap{position:relative;height:160px;}
+  .kpi{text-align:center;padding:12px 0;}
+  .kpi .val{font-size:2.2rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+  .kpi .lbl{font-size:11px;color:var(--dim);margin-top:2px;}
+  .empty{text-align:center;padding:48px 0;color:var(--dim);font-size:13px;}
+  .footer{text-align:center;font-size:10px;color:#2d3748;margin-top:16px;}
+  .footer a{color:var(--primary);text-decoration:none;}
+  /* Light theme */
+  body.light{--bg:#f8fafc;--surface:#fff;--border:#e2e8f0;--text:#0f172a;--muted:#475569;--dim:#94a3b8;}
+  body.light .card{box-shadow:0 1px 3px rgba(0,0,0,.08);}
+</style>
+</head>
+<body>
+
+{% load datalens_extras %}
+
+<div class="header">
+  <h2>{{ upload.original_name }}</h2>
+  <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+    <span class="header-meta">{{ charts|length }} chart{{ charts|length|pluralize }}</span>
+    <button class="theme-btn" onclick="toggleTheme()" id="theme-btn">☀ Light</button>
+  </div>
+</div>
+
+<!-- Chart type filters -->
+{% if charts %}
+<div class="filter-bar" id="filter-bar">
+  <button class="filter-chip active" data-type="all" onclick="filterCharts('all', this)">All</button>
+  {% for chart in charts %}
+  {% if chart.chart_type not in chart_types_seen %}
+  <button class="filter-chip" data-type="{{ chart.chart_type }}" onclick="filterCharts('{{ chart.chart_type }}', this)">
+    {% if chart.chart_type == 'bar' %}Bar
+    {% elif chart.chart_type == 'line' %}Line
+    {% elif chart.chart_type == 'pie' or chart.chart_type == 'doughnut' %}Pie
+    {% elif chart.chart_type == 'scatter' %}Scatter
+    {% elif chart.chart_type == 'kpi' %}KPI
+    {% else %}{{ chart.chart_type|title }}{% endif %}
+  </button>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="grid" id="charts-grid">
+  {% for chart in charts %}
+  {% with d=chart.cached_data %}
+  {% if d %}
+  <div class="card" data-type="{{ chart.chart_type }}" data-id="{{ chart.id }}">
+    <h3>
+      {{ chart.title }}
+      {% if chart.chart_type == 'kpi' %}<span class="badge">KPI</span>{% endif %}
+    </h3>
+    {% if d.kpi %}
+    <div class="kpi">
+      <div class="val">{{ d.value }}</div>
+      <div class="lbl">{{ d.label }}</div>
+    </div>
+    {% elif d.labels and d.datasets %}
+    <div class="chart-wrap">
+      <canvas id="ec-{{ chart.id }}"></canvas>
+    </div>
+    <script>
+    (function(){
+      var ctx = document.getElementById('ec-{{ chart.id }}');
+      if(!ctx) return;
+      var d = {{ d|jsonify|safe }};
+      var ct = d.chart_type || '{{ chart.chart_type }}';
+      var isH = !!d.is_horizontal || ct === 'horizontal_bar';
+      var jt = {area:'line',histogram:'bar',horizontal_bar:'bar',doughnut:'doughnut'}[ct] || ct;
+      Chart.defaults.color = '#94a3b8';
+      new Chart(ctx, {
+        type: isH ? 'bar' : jt,
+        data: {labels: d.labels, datasets: d.datasets || []},
+        options: {
+          indexAxis: isH ? 'y' : 'x',
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: (d.datasets||[]).length > 1, labels: {font:{size:9},color:'#94a3b8'} } },
+          scales: jt !== 'pie' && jt !== 'doughnut' ? {
+            x: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b',font:{size:9}} },
+            y: { grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b',font:{size:9}} },
+          } : undefined,
+        }
+      });
+    })();
+    </script>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endwith %}
+  {% endfor %}
+</div>
+
+{% if not charts %}
+<div class="empty">No charts available for this shared dataset.</div>
+{% endif %}
+
+<div class="footer">Powered by <a href="/" target="_blank">Nexyza</a></div>
+
+<script>
+function toggleTheme(){
+  var isLight = document.body.classList.toggle('light');
+  document.getElementById('theme-btn').textContent = isLight ? '🌙 Dark' : '☀ Light';
+}
+
+function filterCharts(type, btn){
+  document.querySelectorAll('.filter-chip').forEach(function(c){ c.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.card[data-type]').forEach(function(card){
+    card.style.display = (type === 'all' || card.dataset.type === type) ? '' : 'none';
+  });
+}
+</script>
+</body>
+</html>

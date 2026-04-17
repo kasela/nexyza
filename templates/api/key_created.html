@@ -1,0 +1,22 @@
+{% extends 'app_base.html' %}
+{% block title %}API Key Created — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-xl mx-auto px-4 py-16">
+  <div class="glass rounded-2xl p-8 glow text-center">
+    <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">
+      <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+    </div>
+    <h1 class="text-2xl font-bold text-white mb-2">API Key Created</h1>
+    <p class="text-amber-300 text-sm mb-5 font-medium">⚠ Copy this key now — it will never be shown again.</p>
+
+    <div class="glass-sm rounded-xl p-4 mb-5">
+      <code class="text-violet-300 text-sm break-all font-mono" id="key-display">{{ raw }}</code>
+    </div>
+    <div class="flex gap-3 justify-center">
+      <button onclick="navigator.clipboard.writeText('{{ raw }}'); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy Key',1500)"
+              class="btn-primary py-2.5 px-6">Copy Key</button>
+      <a href="{% url 'api:keys' %}" class="btn-secondary py-2.5 px-6">Go to Keys</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

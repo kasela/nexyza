@@ -1,0 +1,35 @@
+{% load datalens_extras %}
+<div class="p-3 rounded-lg border {% if rows_after < rows_before %}bg-amber-900/20 border-amber-700/30{% else %}bg-green-900/20 border-green-700/30{% endif %}" data-rows="{{ row_count }}">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-white text-xs font-semibold">
+        ✓ {{ op_type|replace:"_"|title }} applied
+      </p>
+      {% if rows_before != rows_after %}
+      <p class="text-xs {% if rows_after < rows_before %}text-amber-400{% else %}text-green-400{% endif %} mt-0.5">
+        {{ rows_before }} → {{ rows_after }} rows
+        {% if rows_after < rows_before %}(−{{ rows_before|sub:rows_after }}){% endif %}
+      </p>
+      {% else %}
+      <p class="text-slate-400 text-xs mt-0.5">{{ row_count }} rows — no rows changed</p>
+      {% endif %}
+    </div>
+    <a href="?refreshed=1" onclick="window.location.reload();return false;"
+       class="text-xs text-violet-400 hover:text-violet-300 transition-colors ml-3 shrink-0">
+      ↺ Refresh
+    </a>
+  </div>
+  {% if columns %}
+  <div class="mt-2 pt-2 border-t border-white/5">
+    <p class="text-slate-600 text-xs mb-1.5">Updated columns ({{ columns|length }}):</p>
+    <div class="flex flex-wrap gap-1">
+      {% for col in columns|slice:":8" %}
+      <span class="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">{{ col.name }}</span>
+      {% endfor %}
+      {% if columns|length > 8 %}
+      <span class="text-xs text-slate-600">+{{ columns|length|add:"-8" }} more</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+</div>

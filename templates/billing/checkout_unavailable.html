@@ -1,0 +1,43 @@
+{% extends 'public_base.html' %}
+{% block title %}Checkout Unavailable — Nexyza{% endblock %}
+{% block content %}
+<div style="min-height:70vh;display:flex;align-items:center;justify-content:center;padding:40px 20px;">
+  <div style="text-align:center;max-width:480px;">
+    <div style="width:72px;height:72px;border-radius:20px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 24px;font-size:2rem;">🚀</div>
+
+    {% if reason == 'coming_soon' or not reason %}
+    <h1 style="color:#fff;font-size:1.75rem;font-weight:700;margin:0 0 12px;">Paid plans coming soon</h1>
+    <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 28px;">
+      We're in the process of getting our payment system approved. Paid plans will be available shortly.<br><br>
+      In the meantime, the <strong style="color:#e2e8f0;">Free plan</strong> gives you full access to analysis, charts, exports, and more.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <a href="{% url 'billing:pricing' %}" style="padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-weight:600;font-size:14px;text-decoration:none;">
+        View Pricing
+      </a>
+      <a href="{% url 'dashboard:index' %}" style="padding:11px 24px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;font-weight:600;font-size:14px;text-decoration:none;">
+        Go to Dashboard
+      </a>
+    </div>
+    <p style="color:#475569;font-size:13px;margin-top:24px;">
+      Want to be notified when paid plans launch?
+      <a href="mailto:hello@nexyza.com?subject=Notify me when paid plans launch" style="color:#a78bfa;text-decoration:none;">Email us →</a>
+    </p>
+
+    {% else %}
+    <h1 style="color:#fff;font-size:1.75rem;font-weight:700;margin:0 0 12px;">Checkout not configured</h1>
+    <p style="color:#94a3b8;font-size:15px;line-height:1.7;margin:0 0 28px;">
+      This plan's checkout isn't set up yet. Please contact us if you believe this is a mistake.
+    </p>
+    <div style="display:flex;gap:12px;justify-content:center;">
+      <a href="{% url 'billing:pricing' %}" style="padding:11px 24px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-weight:600;font-size:14px;text-decoration:none;">
+        View Pricing
+      </a>
+      <a href="{% url 'core:contact' %}" style="padding:11px 24px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;font-weight:600;font-size:14px;text-decoration:none;">
+        Contact Us
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends 'app_base.html' %}
+{% block title %}Upgrade Required{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto px-4 py-20 text-center">
+  <div class="text-5xl mb-4">🔌</div>
+  <h1 class="text-2xl font-bold text-white mb-3">Connectors require Plus or Pro</h1>
+  <p class="text-slate-400 mb-6">Connect Google Sheets and Excel Online for live, auto-refreshing dashboards. Available on Plus and Pro plans.</p>
+  <a href="{% url 'billing:pricing' %}" class="btn-primary py-3 px-8">View plans →</a>
+</div>
+{% endblock %}

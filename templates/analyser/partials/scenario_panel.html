@@ -1,0 +1,85 @@
+<div id="scenario-panel-wrap" class="rounded-2xl border mb-5 section-card overflow-hidden" style="background:rgba(255,255,255,.03);border-color:rgba(255,255,255,.08);">
+  <button onclick="this.closest('#scenario-panel-wrap').classList.toggle('sp-open')" style="width:100%;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:none;border:none;cursor:pointer;gap:8px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <span style="font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:#64748b;">Scenario Simulator</span>
+      <span style="font-size:10px;color:#475569;">Preview KPI and segment impact</span>
+    </div>
+    <svg class="sp-chevron" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" style="color:#475569;flex-shrink:0;transition:transform .2s;"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+  </button>
+  <div id="scenario-panel" class="p-4" style="display:none;">
+  <div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+    <div>
+      <div class="text-[11px] uppercase tracking-[0.16em] text-slate-400">Scenario simulator</div>
+      <div class="text-sm text-slate-200">Preview how KPI totals and top segments move when you change assumptions.</div>
+    </div>
+    {% if scenario_context.active %}<span class="text-[11px] px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/20">{{ scenario_context.state.name|default:'Scenario'|title }} active</span>{% else %}<span class="text-[11px] px-3 py-1 rounded-full bg-slate-500/15 text-slate-300 border border-slate-500/20">Base case</span>{% endif %}
+  </div>
+
+  <form method="get" class="grid grid-cols-1 xl:grid-cols-6 gap-3 items-end">
+    <input type="hidden" name="scenario_apply" value="1">
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Scenario name</label>
+      <input type="text" name="scenario_name" value="{{ scenario_context.state.name|default:'custom' }}" class="bp-input" placeholder="Best case">
+    </div>
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Target %</label>
+      <input type="number" step="0.1" name="target_pct" value="{{ scenario_context.state.target_pct|default:'0' }}" class="bp-input" placeholder="0">
+    </div>
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Actual %</label>
+      <input type="number" step="0.1" name="actual_pct" value="{{ scenario_context.state.actual_pct|default:'0' }}" class="bp-input" placeholder="0">
+    </div>
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Generic growth %</label>
+      <input type="number" step="0.1" name="growth_pct" value="{{ scenario_context.state.growth_pct|default:'0' }}" class="bp-input" placeholder="0">
+    </div>
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Scope dimension</label>
+      <select name="selected_dimension" class="bp-select">
+        <option value="">Entire dataset</option>
+        {% for dim in scenario_options.dimensions %}<option value="{{ dim }}" {% if scenario_options.selected_dimension == dim %}selected{% endif %}>{{ dim }}</option>{% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="block text-[11px] text-slate-400 mb-1">Scope value</label>
+      <select name="selected_value" class="bp-select">
+        <option value="">All values</option>
+        {% for val in scenario_options.values %}<option value="{{ val }}" {% if scenario_context.state.selected_value == val %}selected{% endif %}>{{ val }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="xl:col-span-6 flex items-center gap-2">
+      <button type="submit" class="btn-primary py-2 px-4 text-xs">Apply scenario</button>
+      <a href="?scenario_reset=1" class="btn-secondary py-2 px-4 text-xs">Reset</a>
+      <span class="text-[11px] text-slate-500">Scenario preview updates KPI story, benchmark context, time intelligence, and impact table.</span>
+    </div>
+  </form>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+    {% for card in scenario_context.cards %}
+    <div class="rounded-xl border p-3" style="background:rgba(255,255,255,.02);border-color:rgba(255,255,255,.07);">
+      <div class="text-[11px] uppercase tracking-[0.14em] text-slate-500">{{ card.label }}</div>
+      <div class="mt-2 text-lg font-semibold text-white">{{ card.value }}</div>
+      <div class="mt-1 text-xs {% if card.delta_direction == 'positive' %}text-emerald-300{% else %}text-rose-300{% endif %}">Δ {{ card.delta }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+    <div class="rounded-xl border p-3" style="background:rgba(255,255,255,.02);border-color:rgba(255,255,255,.07);">
+      <div class="text-xs font-semibold text-white mb-2">Scenario notes</div>
+      <div class="space-y-2">{% for note in scenario_context.notes %}<div class="text-xs text-slate-300">• {{ note }}</div>{% endfor %}</div>
+    </div>
+    <div class="rounded-xl border p-3" style="background:rgba(255,255,255,.02);border-color:rgba(255,255,255,.07);">
+      <div class="text-xs font-semibold text-white mb-2">Segment impact preview</div>
+      <div class="overflow-x-auto max-h-56">
+        <table class="min-w-full text-xs">
+          <thead><tr class="text-slate-500"><th class="text-left py-1">Entity</th><th class="text-left py-1">Current</th><th class="text-left py-1">Scenario</th><th class="text-left py-1">Delta</th></tr></thead>
+          <tbody>{% for row in scenario_context.rows %}<tr style="border-top:1px solid rgba(255,255,255,.06);"><td class="py-2 text-white">{{ row.entity }}</td><td class="py-2 text-slate-300">{{ row.current }}</td><td class="py-2 text-slate-300">{{ row.scenario }}</td><td class="py-2 {% if row.direction == 'positive' %}text-emerald-300{% else %}text-rose-300{% endif %}">{{ row.delta }}</td></tr>{% empty %}<tr><td colspan="4" class="py-3 text-slate-500">No segment impact preview available.</td></tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+</div>
+<style>#scenario-panel-wrap.sp-open #scenario-panel{display:block!important;}#scenario-panel-wrap.sp-open .sp-chevron{transform:rotate(180deg);}</style>

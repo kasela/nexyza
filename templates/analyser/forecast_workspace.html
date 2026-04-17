@@ -1,0 +1,116 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% load analyser_safety %}
+{% block title %}Forecast Workspace | {{ upload.original_name|safe_preview }}{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+    <div>
+      <div class="text-xs text-slate-500 mb-2">
+        <a href="{% url 'dashboard:index' %}" class="hover:text-slate-300">Dashboard</a>
+        <span>/</span>
+        <a href="{% url 'analyser:analysis_studio' upload.id %}" class="hover:text-slate-300">Analysis Studio</a>
+        <span>/</span>
+        <span class="text-slate-300">Forecast Workspace</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Forecasting, benchmarks, and alerts</h1>
+      <p class="text-sm text-slate-400 mt-1">Decision-ready planning layer built on top of your current analysis workspace.</p>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <a href="{% url 'analyser:analysis_studio' upload.id %}" class="btn-secondary py-2 px-4 text-sm">Back to Studio</a>
+      <a href="{% url 'analyser:board_report' upload.id %}" class="btn-primary py-2 px-4 text-sm">Open Board View</a>
+    </div>
+  </div>
+
+  <form method="get" class="glass rounded-2xl p-5 mb-6" style="border:1px solid rgba(124,58,237,0.15);">
+    <div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Date column</label>
+        <select name="date_column" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for item in date_candidates %}<option value="{{ item }}" {% if item == date_column %}selected{% endif %}>{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Metric</label>
+        <select name="metric" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for item in numeric_columns %}<option value="{{ item }}" {% if item == metric %}selected{% endif %}>{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Method</label>
+        <select name="method" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="linear" {% if method == 'linear' %}selected{% endif %}>Linear trend</option>
+          <option value="moving_avg" {% if method == 'moving_avg' %}selected{% endif %}>Moving average</option>
+          <option value="exponential" {% if method == 'exponential' %}selected{% endif %}>Exponential smoothing</option>
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Periods</label>
+        <input type="number" name="periods" min="1" max="24" value="{{ periods }}" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+      </div>
+      <div><button class="btn-primary py-2 px-4 text-sm w-full">Refresh workspace</button></div>
+    </div>
+  </form>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-5">
+    <div class="xl:col-span-8 space-y-5">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="glass rounded-2xl p-4" style="border:1px solid rgba(124,58,237,0.15);"><p class="text-xs uppercase tracking-wide text-slate-500">Last actual</p><p class="text-2xl font-semibold text-white mt-2">{{ forecast_bundle.summary.last_actual|default:'—' }}</p></div>
+        <div class="glass rounded-2xl p-4" style="border:1px solid rgba(124,58,237,0.15);"><p class="text-xs uppercase tracking-wide text-slate-500">Next forecast</p><p class="text-2xl font-semibold text-violet-300 mt-2">{{ forecast_bundle.summary.next_forecast|default:'—' }}</p></div>
+        <div class="glass rounded-2xl p-4" style="border:1px solid rgba(124,58,237,0.15);"><p class="text-xs uppercase tracking-wide text-slate-500">Forecast delta %</p><p class="text-2xl font-semibold text-white mt-2">{% if forecast_bundle.summary.delta_pct is not None %}{{ forecast_bundle.summary.delta_pct|floatformat:2 }}{% else %}—{% endif %}</p></div>
+        <div class="glass rounded-2xl p-4" style="border:1px solid rgba(124,58,237,0.15);"><p class="text-xs uppercase tracking-wide text-slate-500">Benchmark</p><p class="text-2xl font-semibold text-white mt-2">{{ benchmark_summary.benchmark_value|default:'—' }}</p></div>
+      </div>
+
+      <div class="glass rounded-2xl p-5" style="border:1px solid rgba(124,58,237,0.15);">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-white font-semibold">Forecast vs actual</h2>
+          <span class="text-xs text-slate-400">{{ forecast_bundle.summary.method|default:'—' }}</span>
+        </div>
+        <div class="relative h-96"><canvas id="phase4-forecast-chart"></canvas></div>
+      </div>
+
+      {% include 'analyser/partials/scenario_panel.html' %}
+    </div>
+
+    <div class="xl:col-span-4 space-y-5">
+      <div class="glass rounded-2xl p-5" style="border:1px solid rgba(124,58,237,0.15);">
+        <h3 class="text-white font-semibold mb-3">Benchmark summary</h3>
+        <div class="space-y-3 text-sm">
+          <div class="rounded-xl px-4 py-3 bg-white/5 border border-white/10"><p class="text-[11px] uppercase tracking-wide text-slate-500">Current value</p><p class="text-white font-semibold mt-1">{{ benchmark_summary.current_value|default:'—' }}</p></div>
+          <div class="rounded-xl px-4 py-3 bg-white/5 border border-white/10"><p class="text-[11px] uppercase tracking-wide text-slate-500">Benchmark value</p><p class="text-violet-300 font-semibold mt-1">{{ benchmark_summary.benchmark_value|default:'—' }}</p></div>
+          <div class="rounded-xl px-4 py-3 bg-white/5 border border-white/10"><p class="text-[11px] uppercase tracking-wide text-slate-500">Variance</p><p class="font-semibold mt-1 {% if benchmark_summary.variance_value < 0 %}text-rose-300{% else %}text-emerald-300{% endif %}">{{ benchmark_summary.variance_value|default:'—' }}</p></div>
+          <div class="rounded-xl px-4 py-3 bg-white/5 border border-white/10"><p class="text-[11px] uppercase tracking-wide text-slate-500">Reference</p><p class="text-slate-300 font-medium mt-1">{{ benchmark_summary.label|default:'—' }}</p></div>
+        </div>
+      </div>
+
+      {% include 'analyser/partials/alert_panel.html' %}
+    </div>
+  </div>
+</div>
+{{ forecast_bundle.data|json_script:'forecast-payload' }}
+<script>
+(function(){
+  const payloadEl = document.getElementById('forecast-payload');
+  const payload = payloadEl ? JSON.parse(payloadEl.textContent) : {};
+  const canvas = document.getElementById('phase4-forecast-chart');
+  if (canvas && window.Chart && payload.labels) {
+    const labels = (payload.labels || []).concat(payload.future_labels || []);
+    const actuals = (payload.actuals || []).concat(Array((payload.future_labels || []).length).fill(null));
+    const fc = Array((payload.actuals || []).length).fill(null).concat(payload.forecast || []);
+    const lo = Array((payload.actuals || []).length).fill(null).concat(payload.lower || []);
+    const hi = Array((payload.actuals || []).length).fill(null).concat(payload.upper || []);
+    new Chart(canvas, {
+      type: 'line',
+      data: {labels, datasets: [
+        {label:'Actual', data:actuals, borderColor:'rgba(139,92,246,1)', backgroundColor:'rgba(139,92,246,0.12)', borderWidth:2.4, tension:0.3, fill:true},
+        {label:'Forecast', data:fc, borderColor:'rgba(59,130,246,1)', borderDash:[6,4], borderWidth:2.2, tension:0.3},
+        {label:'Upper', data:hi, borderColor:'rgba(59,130,246,.16)', backgroundColor:'rgba(59,130,246,.08)', pointRadius:0, fill:'+1', tension:0.3},
+        {label:'Lower', data:lo, borderColor:'rgba(59,130,246,.16)', pointRadius:0, tension:0.3}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{labels:{color:'#94a3b8'}}},scales:{x:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#64748b'},grid:{color:'rgba(255,255,255,.05)'}}}}
+    });
+  }
+})();
+</script>
+<script src="{% static 'js/analyser/scenario-panel.js' %}"></script>
+{% endblock %}

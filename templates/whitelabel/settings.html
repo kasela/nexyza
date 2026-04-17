@@ -1,0 +1,220 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Custom Branding — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="mb-8">
+    <h1 class="text-2xl font-bold text-white">Custom Branding</h1>
+    <p class="text-slate-400 text-sm mt-1">White-label Nexyza with your own colours, logo, and app name.</p>
+  </div>
+
+  {% if messages %}
+  {% for msg in messages %}
+  <div class="mb-4 px-4 py-3 rounded-xl text-sm {% if msg.tags == 'error' %}bg-red-900/40 text-red-300{% else %}bg-green-900/40 text-green-300{% endif %}">
+    {{ msg }}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  <form method="post" action="{% url 'whitelabel:save' %}" enctype="multipart/form-data" class="space-y-5">
+    {% csrf_token %}
+
+    <!-- Identity -->
+    <div class="glass rounded-2xl p-6 space-y-5">
+      <p class="text-white font-semibold text-sm">Identity</p>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">App Name</label>
+        <input type="text" name="app_name" value="{{ branding.app_name }}" maxlength="60"
+               class="input-field text-sm" placeholder="Nexyza">
+        <p class="text-slate-600 text-xs mt-1">Shown in the sidebar and browser tab.</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 font-medium">Logo</label>
+          {% if branding.logo %}
+          <div class="mb-2 flex items-center gap-2">
+            <img src="{{ branding.logo.url }}" alt="Current logo"
+                 style="height:32px;border-radius:6px;background:rgba(255,255,255,.1);padding:4px;">
+            <span class="text-slate-500 text-xs">Current logo</span>
+          </div>
+          {% endif %}
+          <input type="file" name="logo" accept="image/png,image/svg+xml,image/jpeg"
+                 class="input-field text-sm py-2">
+          <p class="text-slate-600 text-xs mt-1">PNG or SVG, max 2 MB.</p>
+        </div>
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 font-medium">Favicon</label>
+          {% if branding.favicon %}
+          <div class="mb-2 flex items-center gap-2">
+            <img src="{{ branding.favicon.url }}" alt="Current favicon"
+                 style="height:24px;border-radius:4px;">
+            <span class="text-slate-500 text-xs">Current favicon</span>
+          </div>
+          {% endif %}
+          <input type="file" name="favicon" accept="image/png,image/x-icon,image/svg+xml"
+                 class="input-field text-sm py-2">
+          <p class="text-slate-600 text-xs mt-1">PNG or ICO, 32×32px recommended.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colours with live preview -->
+    <div class="glass rounded-2xl p-6 space-y-5">
+      <div class="flex items-center justify-between">
+        <p class="text-white font-semibold text-sm">Colours</p>
+        <button type="button" onclick="resetColors()"
+                class="text-slate-500 hover:text-slate-300 text-xs transition-colors">
+          Reset to defaults
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for fname, label, default in color_fields %}
+        <div>
+          <label class="block text-slate-400 text-xs mb-1.5 font-medium">{{ label }}</label>
+          <div class="flex gap-2 items-center">
+            <input type="color" id="color-{{ fname }}" name="{{ fname }}"
+                   value="{{ branding|getattr:fname|default:default }}"
+                   class="w-11 h-10 rounded-lg cursor-pointer border border-violet-900/30 bg-transparent flex-shrink-0"
+                   oninput="syncColorText('{{ fname }}', this.value)">
+            <input type="text" id="text-{{ fname }}"
+                   value="{{ branding|getattr:fname|default:default }}"
+                   maxlength="7" pattern="#[0-9a-fA-F]{6}"
+                   class="input-field text-sm font-mono flex-1"
+                   placeholder="{{ default }}"
+                   oninput="syncColorPicker('{{ fname }}', this.value)">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <!-- Live preview -->
+      <div>
+        <p class="text-slate-500 text-xs mb-2">Live preview</p>
+        <div id="color-preview" class="rounded-xl p-4 transition-all"
+             style="background:{{ branding.bg_color|default:'#0d0b17' }};border:1px solid {{ branding.primary_color|default:'#7c3aed' }}40;">
+          <div class="flex items-center gap-2 mb-3">
+            <div id="preview-badge" class="w-6 h-6 rounded"
+                 style="background:{{ branding.primary_color|default:'#7c3aed' }};"></div>
+            <span id="preview-name" class="text-white text-sm font-bold">{{ branding.app_name }}</span>
+          </div>
+          <div class="flex gap-2">
+            <div id="preview-btn" class="text-white text-xs px-3 py-1.5 rounded-lg font-medium"
+                 style="background:{{ branding.primary_color|default:'#7c3aed' }};">Analyse</div>
+            <div id="preview-card" class="text-xs px-3 py-1.5 rounded-lg text-white"
+                 style="background:{{ branding.surface_color|default:'#1e1b2e' }};border:1px solid {{ branding.accent_color|default:'#3b82f6' }}40;">Dashboard</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Advanced -->
+    <div class="glass rounded-2xl p-6 space-y-4">
+      <p class="text-white font-semibold text-sm">Advanced</p>
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Custom CSS</label>
+        <textarea name="custom_css" rows="6" class="input-field text-sm font-mono"
+                  placeholder="/* Override any styles here */&#10;.sidebar { border-right: 1px solid #7c3aed; }">{{ branding.custom_css }}</textarea>
+        <p class="text-slate-600 text-xs mt-1">Applied globally. Use carefully — can break layouts.</p>
+      </div>
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Custom Domain</label>
+        <input type="text" name="custom_domain" value="{{ branding.custom_domain }}"
+               class="input-field text-sm font-mono" placeholder="analytics.yourdomain.com">
+        <p class="text-slate-600 text-xs mt-1">Record only — configure DNS separately on your VPS.</p>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer">
+        <input type="checkbox" name="hide_branding" {% if branding.hide_datalens_branding %}checked{% endif %}
+               class="accent-violet-600">
+        <span class="text-slate-300 text-sm">Hide "Powered by Nexyza" footer</span>
+      </label>
+    </div>
+
+    <div class="flex gap-3">
+      <button type="submit" class="btn-primary flex-1 justify-center py-3">Save Branding</button>
+    </div>
+  </form>
+
+  <!-- Reset -->
+  <form method="post" action="{% url 'whitelabel:reset' %}" class="mt-4">
+    {% csrf_token %}
+    <button type="submit" class="text-slate-600 hover:text-red-400 text-xs transition-colors"
+            onclick="return confirm('Reset all branding to Nexyza defaults?')">
+      Reset to defaults
+    </button>
+  </form>
+</div>
+
+<script>
+const COLOR_DEFAULTS = {
+  primary_color: '#7c3aed',
+  accent_color:  '#3b82f6',
+  bg_color:      '#0d0b17',
+  surface_color: '#1e1b2e',
+};
+
+function syncColorText(field, val) {
+  var t = document.getElementById('text-' + field);
+  if (t) t.value = val;
+  updatePreview();
+}
+
+function syncColorPicker(field, val) {
+  if (/^#[0-9a-fA-F]{6}$/.test(val)) {
+    var p = document.getElementById('color-' + field);
+    if (p) p.value = val;
+    updatePreview();
+  }
+}
+
+function resetColors() {
+  Object.keys(COLOR_DEFAULTS).forEach(function(f) {
+    var p = document.getElementById('color-' + f);
+    var t = document.getElementById('text-' + f);
+    if (p) p.value = COLOR_DEFAULTS[f];
+    if (t) t.value = COLOR_DEFAULTS[f];
+  });
+  updatePreview();
+}
+
+function getColor(field) {
+  var el = document.getElementById('color-' + field);
+  return el ? el.value : COLOR_DEFAULTS[field];
+}
+
+function updatePreview() {
+  var primary = getColor('primary_color');
+  var accent  = getColor('accent_color');
+  var bg      = getColor('bg_color');
+  var surface = getColor('surface_color');
+
+  var preview = document.getElementById('color-preview');
+  if (preview) {
+    preview.style.background = bg;
+    preview.style.borderColor = primary + '40';
+  }
+  var badge = document.getElementById('preview-badge');
+  if (badge) badge.style.background = primary;
+
+  var btn = document.getElementById('preview-btn');
+  if (btn) btn.style.background = primary;
+
+  var card = document.getElementById('preview-card');
+  if (card) {
+    card.style.background = surface;
+    card.style.borderColor = accent + '40';
+  }
+
+  var name = document.getElementById('preview-name');
+  var appInput = document.querySelector('input[name="app_name"]');
+  if (name && appInput) name.textContent = appInput.value || 'Nexyza';
+}
+
+// Live name preview
+var appNameInput = document.querySelector('input[name="app_name"]');
+if (appNameInput) appNameInput.addEventListener('input', updatePreview);
+</script>
+{% endblock %}

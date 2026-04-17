@@ -1,0 +1,428 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Dashboard — Nexyza{% endblock %}
+{% block nav_dashboard %}active{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-7">
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
+    <div>
+      <h1 class="text-2xl font-bold text-white">
+        Good {% now "G" as hour %}{% if hour < 12 %}morning{% elif hour < 18 %}afternoon{% else %}evening{% endif %},
+        {{ user.first_name|default:user.email|truncatechars:20 }} 👋
+      </h1>
+      <p class="text-slate-500 text-sm mt-0.5">Here's what's happening with your data.</p>
+    </div>
+    <a href="/workspace/" class="btn-primary text-sm py-2.5 px-5 self-start sm:self-auto gap-2">
+      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+      Analyse New File
+    </a>
+  </div>
+
+  <!-- ── Onboarding ──────────────────────────────────────────────────────── -->
+  {% if show_onboarding %}
+  <div class="glass rounded-2xl p-6 mb-7 border border-violet-700/20" id="onboarding-card">
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <p class="text-white font-semibold">Getting started with Nexyza</p>
+        <p class="text-slate-400 text-sm mt-0.5">Complete these steps to unlock the full platform.</p>
+      </div>
+      <button onclick="dismissOnboarding()" class="text-slate-600 hover:text-slate-400 text-xl leading-none mt-0.5">✕</button>
+    </div>
+    <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden mb-5">
+      <div class="h-full rounded-full transition-all duration-700" style="width:{{ ob_progress }}%;background:linear-gradient(90deg,#7c3aed,#3b82f6)"></div>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {% for step in onboarding_steps %}
+      <a href="{{ step.url }}" class="flex items-start gap-3 p-3 rounded-xl transition-all {% if step.done %}opacity-55{% else %}hover:bg-violet-900/15 glass-sm{% endif %}">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base {% if step.done %}bg-green-900/40{% else %}bg-violet-900/30{% endif %}">
+          {% if step.done %}✅{% else %}{{ step.icon }}{% endif %}
+        </div>
+        <div>
+          <p class="text-white text-sm font-medium {% if step.done %}line-through opacity-60{% endif %}">{{ step.title }}</p>
+          <p class="text-slate-500 text-xs mt-0.5">{{ step.desc }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Stat cards ──────────────────────────────────────────────────────── -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-7">
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1.5">Total Analyses</p>
+      <p class="text-3xl font-bold text-white">{{ done_uploads }}</p>
+      <p class="text-slate-600 text-xs mt-1">{{ weekly_count }} this week</p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1.5">Rows Analysed</p>
+      <p class="text-3xl font-bold text-white">
+        {% if total_rows >= 1000000 %}{{ total_rows|divisibleby:1000000 }}M{% elif total_rows >= 1000 %}{{ total_rows|floatformat:0 }}{% else %}{{ total_rows }}{% endif %}
+      </p>
+      <p class="text-slate-600 text-xs mt-1">across all files</p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1.5">Charts Generated</p>
+      <p class="text-3xl font-bold text-white">{{ chart_count }}</p>
+      <p class="text-slate-600 text-xs mt-1">auto + manual</p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1.5">This Month</p>
+      <p class="text-3xl font-bold {% if upload_limit and monthly_count >= upload_limit %}text-amber-400{% else %}text-white{% endif %}">
+        {{ monthly_count }}{% if upload_limit %}<span class="text-slate-600 text-lg"> / {{ upload_limit }}</span>{% endif %}
+      </p>
+      {% if upload_limit %}
+      <div class="h-1 bg-slate-800 rounded-full overflow-hidden mt-2">
+        <div class="h-full rounded-full" style="width:{% widthratio monthly_count upload_limit 100 %}%;background:{% if monthly_count >= upload_limit %}#f59e0b{% else %}linear-gradient(90deg,#7c3aed,#3b82f6){% endif %}"></div>
+      </div>
+      {% else %}<p class="text-slate-600 text-xs mt-1">unlimited</p>{% endif %}
+    </div>
+  </div>
+
+  <!-- ── Quick actions ───────────────────────────────────────────────────── -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
+    {% for action in quick_actions %}
+    <a href="{{ action.url }}" class="glass rounded-xl p-4 flex items-center gap-3 hover:glow transition-all group">
+      <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 text-base" style="background:rgba(124,58,237,.15)">{{ action.icon }}</div>
+      <div class="min-w-0">
+        <p class="text-white text-xs font-medium group-hover:text-violet-300 transition-colors">{{ action.title }}</p>
+        <p class="text-slate-600 text-xs truncate">{{ action.desc }}</p>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+
+  <!-- ── Pinned files ─────────────────────────────────────────────────────── -->
+  {% if pinned %}
+  <div class="mb-6">
+    <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">📌 Pinned</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+      {% for upload in pinned %}
+      <div class="glass rounded-xl p-4 flex items-center gap-3 group border border-violet-900/20 hover:border-violet-700/30 transition-colors">
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+          {% if upload.file_type == 'csv' %}bg-green-900/30{% elif upload.file_type == 'excel' %}bg-emerald-900/30{% else %}bg-blue-900/30{% endif %}">
+          <span class="text-sm">{% if upload.file_type == 'csv' %}📊{% elif upload.file_type == 'excel' %}📗{% else %}🔷{% endif %}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <a href="{% url 'analyser:result' upload.id %}" class="text-white text-sm font-medium truncate block hover:text-violet-300 transition-colors">{{ upload.original_name }}</a>
+          <p class="text-slate-500 text-xs">{{ upload.row_count|default:0 }} rows · {{ upload.column_count|default:0 }} cols</p>
+        </div>
+        <button onclick="togglePin({{ upload.id }}, this)"
+                class="opacity-0 group-hover:opacity-100 transition-opacity text-amber-400 text-base p-1" title="Unpin">📌</button>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── Recent files ────────────────────────────────────────────────────── -->
+  <div class="glass rounded-2xl overflow-hidden">
+    <!-- Header with search + bulk actions -->
+    <div class="px-5 py-4 border-b border-violet-900/20 flex items-center gap-3 flex-wrap">
+      <p class="text-white font-semibold mr-auto">Recent Files</p>
+
+      <!-- Search -->
+      <input type="text" id="file-search" placeholder="Search files…"
+             style="padding:5px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;width:160px;"
+             oninput="filterFiles(this.value)"
+             onfocus="this.style.borderColor='rgba(124,58,237,.4)'"
+             onblur="this.style.borderColor='rgba(255,255,255,.08)'">
+
+      <!-- Filter pills -->
+      <div class="flex gap-1.5">
+        <button onclick="filterStatus('all', this)" class="status-pill active" style="padding:4px 10px;border-radius:999px;border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.15);color:#a78bfa;font-size:11px;cursor:pointer;">All</button>
+        <button onclick="filterStatus('done', this)" class="status-pill" style="padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#64748b;font-size:11px;cursor:pointer;">Done</button>
+        <button onclick="filterStatus('error', this)" class="status-pill" style="padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#64748b;font-size:11px;cursor:pointer;">Error</button>
+      </div>
+
+      <!-- Bulk delete button (shown when items selected) -->
+      <button id="bulk-delete-btn" onclick="bulkDelete()" style="display:none;padding:5px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.3);background:rgba(239,68,68,.1);color:#f87171;font-size:11px;cursor:pointer;font-weight:600;">
+        🗑 Delete selected (<span id="selected-count">0</span>)
+      </button>
+
+      <div class="flex gap-2 text-xs ml-1">
+        <a href="/workspace/compare/" class="text-slate-500 hover:text-slate-300 transition-colors">Compare</a>
+        <span class="text-slate-700">·</span>
+        <a href="/join/" class="text-slate-500 hover:text-slate-300 transition-colors">Join</a>
+      </div>
+    </div>
+
+    {% if uploads %}
+    <div class="divide-y divide-slate-800/40" id="files-list">
+      {% for upload in uploads %}
+      <div class="file-row px-5 py-3.5 flex items-center gap-3 hover:bg-violet-900/8 transition-colors group"
+           data-name="{{ upload.original_name|lower }}"
+           data-status="{{ upload.status }}"
+           data-id="{{ upload.id }}">
+
+        <!-- Checkbox (shows on hover or when any selected) -->
+        <input type="checkbox" class="file-checkbox opacity-0 group-hover:opacity-100 transition-opacity"
+               style="accent-color:#7c3aed;width:14px;height:14px;flex-shrink:0;cursor:pointer;"
+               onchange="updateBulkState()"
+               data-id="{{ upload.id }}">
+
+        <!-- Type icon -->
+        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0
+          {% if upload.file_type == 'csv' %}bg-green-900/30{% elif upload.file_type == 'excel' %}bg-emerald-900/30{% else %}bg-blue-900/30{% endif %}">
+          <span class="text-sm">{% if upload.file_type == 'csv' %}📊{% elif upload.file_type == 'excel' %}📗{% else %}🔷{% endif %}</span>
+        </div>
+
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2">
+            <p class="text-white text-sm font-medium truncate">{{ upload.original_name }}</p>
+            {% if upload.is_pinned %}<span class="text-amber-400 text-xs flex-shrink-0">📌</span>{% endif %}
+          </div>
+          <p class="text-slate-500 text-xs">
+            {{ upload.row_count|default:0 }} rows · {{ upload.column_count|default:0 }} cols ·
+            {{ upload.file_size_display }} · {{ upload.created_at|timesince }} ago
+          </p>
+        </div>
+
+        <!-- Status -->
+        <span class="text-xs px-2.5 py-0.5 rounded-full shrink-0
+          {% if upload.status == 'done' %}bg-green-900/30 text-green-400{% elif upload.status == 'error' %}bg-red-900/30 text-red-400{% else %}bg-amber-900/30 text-amber-400{% endif %}">
+          {{ upload.status }}
+        </span>
+
+        <!-- Actions (hover) -->
+        <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          {% if upload.status == 'done' %}
+          <a href="{% url 'analyser:result' upload.id %}" title="View"
+             class="p-1.5 rounded-lg hover:bg-violet-900/30 text-slate-500 hover:text-violet-300 transition-all">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </a>
+          <a href="{% url 'analyser:adaptive_refinement' upload.id %}" title="Refine"
+             class="p-1.5 rounded-lg hover:bg-violet-900/30 text-slate-500 hover:text-violet-300 transition-all">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 6h15M7.5 12h9m-12 6h15"/></svg>
+          </a>
+          <a href="{% url 'analyser:chart_gallery' upload.id %}" title="Charts"
+             class="p-1.5 rounded-lg hover:bg-violet-900/30 text-slate-500 hover:text-violet-300 transition-all">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+          </a>
+          <!-- Pin toggle -->
+          <button onclick="togglePin({{ upload.id }}, this)"
+                  title="{% if upload.is_pinned %}Unpin{% else %}Pin to top{% endif %}"
+                  class="p-1.5 rounded-lg hover:bg-violet-900/30 text-slate-500 hover:text-amber-400 transition-all"
+                  data-pinned="{{ upload.is_pinned|lower }}">
+            {% if upload.is_pinned %}📌{% else %}📍{% endif %}
+          </button>
+          <a href="{% url 'exports:excel' upload.id %}" title="Export Excel"
+             class="p-1.5 rounded-lg hover:bg-violet-900/30 text-slate-500 hover:text-violet-300 transition-all">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          </a>
+          {% endif %}
+          <form method="post" action="{% url 'analyser:delete' upload.id %}" onsubmit="return confirm('Delete {{ upload.original_name }}?')">
+            {% csrf_token %}
+            <button type="submit" title="Delete"
+                    class="p-1.5 rounded-lg hover:bg-red-900/20 text-slate-600 hover:text-red-400 transition-all">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty state -->
+    <div class="px-6 py-16 text-center">
+      <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(59,130,246,.1));display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:2rem;">📂</div>
+      <p class="text-white font-semibold text-lg mb-2">No files yet</p>
+      <p class="text-slate-400 text-sm mb-6 max-w-sm mx-auto">Upload your first CSV, Excel, or JSON file to get instant AI-powered analysis, charts, and insights.</p>
+      <div class="flex gap-3 justify-center flex-wrap">
+        <a href="/workspace/" class="btn-primary">Upload a File</a>
+      </div>
+      <p class="text-slate-600 text-xs mt-6">Supports CSV, Excel (.xlsx/.xls), and JSON · Max 2 MB on free plan</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── AI Token Usage ───────────────────────────────────────────────────── -->
+  {% if token_budget %}
+  <div class="glass rounded-2xl p-5 mt-6 border border-violet-700/15">
+    <div class="flex items-center justify-between mb-3">
+      <p class="text-white font-semibold text-sm">AI Token Usage — This Month</p>
+      <a href="/billing/pricing/" class="text-violet-400 text-xs hover:text-violet-300 transition-colors">Upgrade →</a>
+    </div>
+    <div class="flex items-center gap-3 mb-2">
+      <div class="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div class="h-full rounded-full transition-all" style="width:{{ token_pct }}%;background:{% if token_pct > 90 %}#ef4444{% elif token_pct > 70 %}#f59e0b{% else %}linear-gradient(90deg,#7c3aed,#3b82f6){% endif %};"></div>
+      </div>
+      <span class="text-slate-400 text-xs font-mono whitespace-nowrap">{{ token_used|default:0 }} / {{ token_budget|default:0 }}</span>
+    </div>
+    <p class="text-slate-500 text-xs">{{ token_pct }}% used · resets 1st of month</p>
+  </div>
+  {% endif %}
+
+  <!-- ── Recent Charts ───────────────────────────────────────────────────── -->
+  {% if recent_charts %}
+  <div class="mt-6">
+    <div class="flex items-center justify-between mb-4">
+      <p class="text-white font-semibold">Recent Charts</p>
+      <a href="{% if recent_done %}{% url 'analyser:chart_gallery' recent_done.0.id %}{% else %}#{% endif %}"
+         class="text-violet-400 text-xs hover:text-violet-300 transition-colors">View all →</a>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+    {% for chart in recent_charts %}{% with d=chart.cached_data %}
+    {% if d and not d.error and d.labels and d.datasets %}
+    <a href="{% url 'analyser:chart_gallery' chart.upload.id %}"
+       class="glass rounded-xl p-3 hover:border-violet-700/30 transition-all border border-transparent">
+      <p class="text-white text-xs font-medium mb-1 truncate">{{ chart.title }}</p>
+      <p class="text-slate-600 text-xs mb-2 truncate">{{ chart.upload.original_name }}</p>
+      <div style="position:relative;height:70px;">
+        <canvas id="dash-chart-{{ chart.id }}"></canvas>
+      </div>
+      <script>
+      (function(){
+        var raw={{ d|jsonify|safe }};
+        if(!raw||!raw.labels||!raw.labels.length)return;
+        var ct=raw.chart_type||'bar',isH=!!raw.is_horizontal;
+        var jt={area:'line',histogram:'bar',horizontal_bar:'bar'}[ct]||ct;
+        Chart.defaults.color='#94a3b8';
+        new Chart(document.getElementById('dash-chart-{{ chart.id }}'),{
+          type:isH?'bar':jt,
+          data:{labels:raw.labels,datasets:raw.datasets||[]},
+          options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,
+            animation:{duration:0},
+            plugins:{legend:{display:false},tooltip:{enabled:false}},
+            scales:jt!=='pie'&&jt!=='doughnut'?{x:{display:false},y:{display:false}}:undefined}
+        });
+      })();
+      </script>
+    </a>
+    {% endif %}{% endwith %}{% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── File type breakdown ─────────────────────────────────────────────── -->
+  {% if type_counts %}
+  <div class="flex gap-3 mt-5 flex-wrap">
+    {% if type_counts.csv %}
+    <div class="glass-sm rounded-xl px-4 py-2.5 flex items-center gap-2">
+      <span class="text-green-400 text-sm">📊</span>
+      <span class="text-white text-sm font-medium">{{ type_counts.csv }}</span>
+      <span class="text-slate-500 text-xs">CSV</span>
+    </div>{% endif %}
+    {% if type_counts.excel %}
+    <div class="glass-sm rounded-xl px-4 py-2.5 flex items-center gap-2">
+      <span class="text-emerald-400 text-sm">📗</span>
+      <span class="text-white text-sm font-medium">{{ type_counts.excel }}</span>
+      <span class="text-slate-500 text-xs">Excel</span>
+    </div>{% endif %}
+    {% if type_counts.json %}
+    <div class="glass-sm rounded-xl px-4 py-2.5 flex items-center gap-2">
+      <span class="text-blue-400 text-sm">🔷</span>
+      <span class="text-white text-sm font-medium">{{ type_counts.json }}</span>
+      <span class="text-slate-500 text-xs">JSON</span>
+    </div>{% endif %}
+  </div>
+  {% endif %}
+
+  <!-- ── Upgrade banner ──────────────────────────────────────────────────── -->
+  {% if not is_pro %}
+  <div class="mt-6 glass rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4 border border-violet-700/20"
+       style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.04))">
+    <div class="text-2xl shrink-0">✨</div>
+    <div class="flex-1 text-center sm:text-left">
+      <p class="text-white font-semibold">Unlock AI-powered insights</p>
+      <p class="text-slate-400 text-sm mt-0.5">Pro gives you AI charts, natural language queries, unlimited uploads, and live data connectors.</p>
+    </div>
+    <a href="/billing/pricing/" class="btn-primary text-sm py-2.5 px-6 shrink-0">Upgrade to Pro →</a>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+var CSRF = '{{ csrf_token }}';
+
+/* ── Dismiss onboarding ─────────────────────────────────────────────────── */
+function dismissOnboarding(){
+  fetch('{% url "accounts:dismiss_onboarding" %}',{method:'POST',headers:{'X-CSRFToken':CSRF}})
+    .then(function(){var c=document.getElementById('onboarding-card');if(c)c.style.display='none';});
+}
+
+/* ── Pin / unpin ────────────────────────────────────────────────────────── */
+function togglePin(uploadId, btn){
+  fetch('/workspace/'+uploadId+'/pin/', {method:'POST', headers:{'X-CSRFToken':CSRF}})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.textContent = d.pinned ? '📌' : '📍';
+      btn.title = d.pinned ? 'Unpin' : 'Pin to top';
+      btn.dataset.pinned = d.pinned ? 'true' : 'false';
+      /* Show/hide 📌 badge next to filename */
+      var row = btn.closest('.file-row');
+      if(row){
+        var badge = row.querySelector('.pin-badge');
+        if(badge) badge.style.display = d.pinned ? 'inline' : 'none';
+      }
+      /* Refresh page after a short delay to update pinned section */
+      setTimeout(function(){location.reload();}, 800);
+    });
+}
+
+/* ── Search ─────────────────────────────────────────────────────────────── */
+function filterFiles(q){
+  q = q.toLowerCase();
+  document.querySelectorAll('.file-row').forEach(function(row){
+    row.style.display = (!q || row.dataset.name.includes(q)) ? '' : 'none';
+  });
+}
+
+/* ── Status filter ──────────────────────────────────────────────────────── */
+function filterStatus(status, btn){
+  document.querySelectorAll('.status-pill').forEach(function(b){
+    b.style.background='rgba(255,255,255,.04)';
+    b.style.color='#64748b';
+    b.style.borderColor='rgba(255,255,255,.08)';
+  });
+  btn.style.background='rgba(124,58,237,.15)';
+  btn.style.color='#a78bfa';
+  btn.style.borderColor='rgba(124,58,237,.3)';
+
+  document.querySelectorAll('.file-row').forEach(function(row){
+    row.style.display = (status==='all' || row.dataset.status===status) ? '' : 'none';
+  });
+}
+
+/* ── Bulk select ────────────────────────────────────────────────────────── */
+function updateBulkState(){
+  var checked = document.querySelectorAll('.file-checkbox:checked');
+  var btn = document.getElementById('bulk-delete-btn');
+  var cnt = document.getElementById('selected-count');
+  btn.style.display = checked.length > 0 ? 'block' : 'none';
+  if(cnt) cnt.textContent = checked.length;
+  /* Make all checkboxes visible when any are checked */
+  document.querySelectorAll('.file-checkbox').forEach(function(cb){
+    cb.style.opacity = checked.length > 0 ? '1' : '';
+  });
+}
+
+/* ── Bulk delete ────────────────────────────────────────────────────────── */
+function bulkDelete(){
+  var ids = Array.from(document.querySelectorAll('.file-checkbox:checked')).map(function(cb){return cb.dataset.id;});
+  if(!ids.length) return;
+  if(!confirm('Delete '+ids.length+' file'+( ids.length>1?'s':'')+' permanently?')) return;
+  var fd = new FormData();
+  fd.append('csrfmiddlewaretoken', CSRF);
+  fd.append('ids', ids.join(','));
+  fetch('/workspace/bulk-delete/', {
+    method:'POST', body:fd,
+    headers:{'HX-Request':'true'}
+  })
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.ok){
+        ids.forEach(function(id){
+          var row = document.querySelector('.file-row[data-id="'+id+'"]');
+          if(row) row.remove();
+        });
+        updateBulkState();
+      }
+    });
+}
+</script>
+{% endblock %}

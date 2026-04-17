@@ -1,0 +1,268 @@
+{% load analyser_safety %}
+{% load datalens_extras %}
+{% with cid=chart.id d=chart.cached_data rm=chart.render_meta %}
+<div class="chart-card-wrapper chart-card group"
+     id="cw-{{ cid }}"
+     data-id="{{ cid }}"
+     data-type="{{ chart.chart_type }}"
+     data-title="{{ chart.title|lower }}"
+     data-size="{{ chart.size }}"
+     data-auto="{% if chart.is_auto %}true{% else %}false{% endif %}"
+     data-order="{{ forloop.counter0|default:0 }}"
+     style="{% if chart.size == 'sm' %}grid-column:span 1{% elif chart.size == 'lg' or chart.size == 'full' %}grid-column:span 2{% else %}grid-column:span 1{% endif %};">
+
+  <div class="glass rounded-2xl overflow-hidden flex flex-col" style="border:1px solid rgba(124,58,237,0.15);transition:border-color .2s;" id="card-inner-{{ cid }}">
+
+    <!-- ── Header bar ─────────────────────────────────── -->
+    <div style="display:flex;align-items:center;gap:6px;padding:10px 12px 6px;flex-shrink:0;">
+      <span class="drag-handle" style="cursor:grab;color:#334155;font-size:13px;flex-shrink:0;user-select:none;">⠿</span>
+      <div style="flex:1;min-width:0;">
+        <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ chart.title }}">{{ chart.title }}</p>
+        {% with ins=chart.config_json.insight %}{% if ins %}<p style="color:#475569;font-size:10px;margin:2px 0 0;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ ins|safe_text }}">{{ ins|safe_text }}</p>{% endif %}{% endwith %}
+        {% if rm or chart.selection_meta %}
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">
+          {% if chart.selection_meta %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(124,58,237,.12);color:#c4b5fd;border:1px solid rgba(124,58,237,.22);">{{ chart.selection_meta.priority_label }}</span>{% endif %}
+          {% if rm %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.05);color:#cbd5e1;border:1px solid rgba(255,255,255,.06);">{{ rm.metric_type|default:'number'|title }}</span>{% endif %}
+          {% if rm.status and rm.status != 'context' %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:{% if rm.status == 'good' %}rgba(16,185,129,.14){% elif rm.status == 'warning' %}rgba(250,204,21,.14){% else %}rgba(244,63,94,.14){% endif %};color:{% if rm.status == 'good' %}#6ee7b7{% elif rm.status == 'warning' %}#fde68a{% else %}#fda4af{% endif %};border:1px solid rgba(255,255,255,.06);">{{ rm.status_label }}</span>{% endif %}
+          {% if rm.benchmark_label %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(59,130,246,.14);color:#93c5fd;border:1px solid rgba(255,255,255,.06);">{{ rm.benchmark_label }}</span>{% endif %}
+          {% if chart.selection_meta and chart.selection_meta.reasons %}{% for reason in chart.selection_meta.reasons|slice:':2' %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(255,255,255,.04);color:#94a3b8;border:1px solid rgba(255,255,255,.06);">{{ reason }}</span>{% endfor %}{% endif %}
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Action buttons — always visible on hover, settings always shown -->
+      <div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">
+        {% if chart.is_auto %}<span style="font-size:9px;padding:2px 6px;border-radius:999px;background:rgba(124,58,237,.2);color:#7c3aed;margin-right:2px;">auto</span>{% endif %}
+        <!-- Fullscreen -->
+        <button onclick="openFullscreen('{{ cid|escapejs }}')"
+                title="Present"
+                style="width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,.05);color:#64748b;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:.15s;"
+                onmouseover="this.style.background='rgba(124,58,237,.2)';this.style.color='#a78bfa'"
+                onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.color='#64748b'"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
+        <!-- Download -->
+        <button onclick="quickDownload('{{ cid|escapejs }}')"
+                title="Download PNG"
+                style="width:24px;height:24px;border-radius:6px;border:none;background:rgba(255,255,255,.05);color:#64748b;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;transition:.15s;"
+                onmouseover="this.style.background='rgba(124,58,237,.2)';this.style.color='#a78bfa'"
+                onmouseout="this.style.background='rgba(255,255,255,.05)';this.style.color='#64748b'">↓</button>
+        <!-- Settings (always visible) -->
+        <button onclick="openChartSettings('{{ cid|escapejs }}')"
+                title="Chart settings"
+                style="width:24px;height:24px;border-radius:6px;border:1px solid rgba(124,58,237,.25);background:rgba(124,58,237,.08);color:#a78bfa;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:.15s;"
+                onmouseover="this.style.background='rgba(124,58,237,.25)';this.style.borderColor='rgba(124,58,237,.5)'"
+                onmouseout="this.style.background='rgba(124,58,237,.08)';this.style.borderColor='rgba(124,58,237,.25)'">⚙</button>
+      </div>
+    </div>
+
+    <!-- ── Chart body ─────────────────────────────────── -->
+    <div id="body-{{ cid }}"
+         style="padding:0 10px 12px;flex-shrink:0;overflow:hidden;
+                height:{% if chart.chart_type == 'kpi' %}110px{% elif chart.chart_type == 'heatmap' %}200px{% elif chart.size == 'full' or chart.size == 'lg' %}260px{% else %}210px{% endif %};">
+
+      {% if not d %}
+        <div style="height:100%;display:flex;align-items:center;justify-content:center;"><p style="color:#374151;font-size:12px;">No data</p></div>
+
+      {% elif d.error %}
+        <div style="height:100%;display:flex;align-items:center;justify-content:center;padding:8px;">
+          <p style="color:#f87171;font-size:11px;text-align:center;">{{ d.error }}</p>
+        </div>
+
+      {% elif d.kpi %}
+        <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+          <p style="font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,{% if rm.palette_hint == 'emerald' %}#34d399,#60a5fa{% elif rm.palette_hint == 'rose' %}#fb7185,#f59e0b{% elif rm.palette_hint == 'amber' %}#f59e0b,#facc15{% elif rm.palette_hint == 'cyan' %}#22d3ee,#60a5fa{% else %}#a78bfa,#60a5fa{% endif %});-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin:0;">{{ d.value|default:"—" }}</p>
+          <p style="color:#64748b;font-size:11px;text-align:center;margin:0;">{{ d.label }}</p>
+          {% if rm.benchmark_label or rm.compact_note %}<div style="display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:2px;">{% if rm.benchmark_label %}<span style="font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.05);color:#94a3b8;">{{ rm.benchmark_label }} {{ rm.benchmark_value }}</span>{% endif %}{% if rm.compact_note %}<span style="font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.05);color:#94a3b8;">{{ rm.compact_note }}</span>{% endif %}</div>{% endif %}
+          {% if d.comparison %}
+          <div style="display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap;margin-top:4px;">
+            <span style="font-size:10px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.05);color:#94a3b8;">Target {{ d.comparison.target_value }}</span>
+            <span style="font-size:10px;padding:3px 7px;border-radius:999px;background:{% if d.comparison.variance_direction == 'positive' %}rgba(16,185,129,.14){% else %}rgba(244,63,94,.14){% endif %};color:{% if d.comparison.variance_direction == 'positive' %}#6ee7b7{% else %}#fda4af{% endif %};">Variance {{ d.comparison.variance_value }}</span>
+          </div>
+          {% endif %}
+          {% if d.sparkline %}
+          <div style="height:28px;width:100%;position:relative;margin-top:4px;">
+            <canvas id="spark-{{ cid }}"></canvas>
+          </div>
+          <script>(function(){var el=document.getElementById('spark-{{ cid }}');if(!el)return;var sp={{ d.sparkline|safe }};if(!sp||!sp.length)return;new Chart(el,{type:'bar',data:{labels:sp.map(function(_,i){return i}),datasets:[{data:sp,backgroundColor:'rgba(139,92,246,0.45)',borderRadius:1,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});})();</script>
+          {% endif %}
+        </div>
+
+      {% elif d.heatmap %}
+        {% if d.columns %}
+        <div style="height:100%;overflow:auto;">
+          <table style="font-size:9px;border-collapse:collapse;width:100%;">
+            <thead><tr><th style="padding:2px 4px;color:#475569;"></th>
+            {% for col in d.columns %}<th style="padding:2px 3px;color:#94a3b8;text-align:center;white-space:nowrap;">{{ col|truncatechars:7 }}</th>{% endfor %}</tr></thead>
+            <tbody>{% for row in d.matrix %}<tr>
+              <td style="padding:2px 4px;color:#94a3b8;white-space:nowrap;">{{ d.columns|slice:forloop.counter0|last|truncatechars:7 }}</td>
+              {% for val in row %}
+              <td style="padding:2px 3px;text-align:center;border-radius:2px;font-size:9px;background:{% if val == None %}transparent{% elif val >= 0.7 %}rgba(139,92,246,0.65){% elif val >= 0.4 %}rgba(139,92,246,0.32){% elif val >= 0.1 %}rgba(139,92,246,0.12){% elif val <= -0.4 %}rgba(244,63,94,0.38){% elif val <= -0.1 %}rgba(244,63,94,0.15){% else %}transparent{% endif %};color:#94a3b8;">{% if val != None %}{{ val|floatformat:2 }}{% else %}—{% endif %}</td>
+              {% endfor %}</tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}<div style="height:100%;display:flex;align-items:center;justify-content:center;"><p style="color:#374151;font-size:12px;">Need 3+ numeric columns</p></div>{% endif %}
+
+      {% else %}
+        {% if d.datasets and d.labels or d.datasets and d.chart_type == 'scatter' %}
+        <div style="position:relative;height:100%;width:100%;">
+          <canvas id="cc-{{ cid }}"></canvas>
+          {% if d.center_label %}<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><div style="font-size:1.2rem;font-weight:700;color:#e2e8f0;">{{ d.center_label }}</div></div>{% endif %}
+        </div>
+        <script>
+        (function(){
+          var raw={{ d|jsonify|safe }};
+          raw.render_meta={{ rm|default:"{}"|jsonify|safe }};
+          if(!raw||!raw.labels||!raw.labels.length)return;
+          var ctype=raw.chart_type||'bar',isH=!!raw.is_horizontal;
+          var jsType={area:'line',histogram:'bar',horizontal_bar:'bar',waterfall:'bar',bullet:'bar',progress_ring:'doughnut'}[ctype]||ctype;
+          var yLbl=raw.y_label||'',xLbl=raw.x_label||'';
+          var renderMeta=raw.render_meta||{};
+          function formatMetricValue(v, formatter, decimals){
+            decimals=(decimals===undefined||decimals===null)?1:decimals;
+            if(typeof v!=='number' || Number.isNaN(v)) return v;
+            if(formatter==='percent' || formatter==='percent_delta') return v.toFixed(decimals)+'%';
+            if(formatter==='integer' || formatter==='integer_delta') return Math.round(v).toLocaleString();
+            if(Math.abs(v)>=1e9) return (v/1e9).toFixed(decimals)+'B';
+            if(Math.abs(v)>=1e6) return (v/1e6).toFixed(decimals)+'M';
+            if(Math.abs(v)>=1e3) return (v/1e3).toFixed(decimals)+'K';
+            return v.toFixed(decimals);
+          }
+          Chart.defaults.color='#94a3b8';
+          Chart.defaults.font={family:"'DM Sans',system-ui",size:10};
+          var scales={};
+          if(jsType!=='pie'&&jsType!=='doughnut'){
+            var xA={grid:{color:'rgba(255,255,255,0.035)',drawBorder:false},ticks:{color:'#64748b',font:{size:9},maxRotation:isH?0:40,maxTicksLimit:isH?20:9}};
+            var yA={grid:{color:'rgba(255,255,255,0.05)',drawBorder:false},ticks:{color:'#64748b',font:{size:9},callback:function(v){return typeof v==='number'?formatMetricValue(v, renderMeta.formatter, renderMeta.decimals):v;}}};
+            if(xLbl)xA.title={display:true,text:xLbl,color:'#475569',font:{size:9}};
+            if(yLbl)yA.title={display:true,text:yLbl,color:'#475569',font:{size:9}};
+            scales=isH?{x:yA,y:xA}:{x:xA,y:yA};
+          }
+          /* Build dual-axis scales if needed */
+          if(raw.has_dual_axis&&raw.y2_label&&!isH){
+            scales.y2={
+              position:'right',
+              grid:{drawOnChartArea:false,color:'rgba(59,130,246,0.04)'},
+              ticks:{color:'#60a5fa',font:{size:9},callback:function(v){
+                var y2l=raw.y2_label||'';
+                return typeof v==='number'?formatMetricValue(v, renderMeta.formatter, renderMeta.decimals):v;}},
+              title:raw.y2_label?{display:true,text:raw.y2_label,color:'#60a5fa',font:{size:9}}:{display:false}
+            };
+          }
+          window.DLCharts=window.DLCharts||{};
+          window.DLCharts['{{ cid }}']=new Chart(document.getElementById('cc-{{ cid }}'),{
+            type:isH?'bar':jsType,
+            data:{labels:raw.labels,datasets:raw.datasets||[]},
+            options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,animation:{duration:350},
+              plugins:{legend:{display:(raw.datasets||[]).length>1||jsType==='pie'||jsType==='doughnut',position:(jsType==='pie'||jsType==='doughnut')?'right':'top',labels:{color:'#94a3b8',font:{size:9},boxWidth:8,padding:6,usePointStyle:true}},
+              tooltip:{callbacks:{label:function(ctx){var v=ctx.parsed&&ctx.parsed.y!==undefined?ctx.parsed.y:ctx.parsed;if(typeof v!=='number')return' '+v;return ' '+formatMetricValue(v, renderMeta.formatter, renderMeta.decimals);}}}},scales:scales}
+          });
+          /* Store metadata for settings modal */
+          window.DLChartMeta=window.DLChartMeta||{};
+          window.DLChartMeta['{{ cid }}']={
+            title:         '{{ chart.title|escapejs }}',
+            chart_type:    '{{ chart.chart_type }}',
+            x_axis:        '{{ chart.x_axis|escapejs }}',
+            y_axis:        '{{ chart.y_axis|escapejs }}',
+            group_by:      '{{ chart.group_by|escapejs }}',
+            aggregation:   '{{ chart.aggregation }}',
+            color:         '{{ chart.color }}',
+            size:          '{{ chart.size }}',
+            insight:       '{{ chart.config_json.insight|default:""|escapejs }}',
+            x_label:       '{{ chart.config_json.x_label|default:""|escapejs }}',
+            y_label:       '{{ chart.config_json.y_label|default:""|escapejs }}',
+            extra_measures:{{ chart.config_json.extra_measures|default:"[]"|jsonify|safe }},
+            y2_axis:       '{{ chart.config_json.y2_axis|default:""|escapejs }}',
+            y2_label:      '{{ chart.config_json.y2_label|default:""|escapejs }}',
+            upload_pk:     '{{ upload.id|escapejs }}',
+            raw:           raw
+          };
+        })();
+        </script>
+        {% else %}
+        <div style="height:100%;display:flex;align-items:center;justify-content:center;">
+          <p style="color:#374151;font-size:12px;">No chart data</p>
+        </div>
+        {% endif %}
+      {% endif %}
+    </div><!-- end chart body -->
+
+    {% if d.annotations or d.insight_summary or d.insight_driver or d.insight_risk or d.insight_next_step or chart.explanation %}
+    <!-- Insight toggle button — click to show/hide inline or open right drawer -->
+    <div style="padding:0 10px 8px;display:flex;align-items:center;gap:6px;border-top:1px solid rgba(255,255,255,.04);padding-top:8px;margin-top:2px;">
+      <button onclick="toggleInsightInline('{{ cid }}')" title="Toggle insight panel" style="display:flex;align-items:center;gap:5px;font-size:10px;color:#64748b;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:999px;padding:3px 10px;cursor:pointer;transition:.15s;" onmouseover="this.style.color='#a78bfa';this.style.borderColor='rgba(124,58,237,.3)'" onmouseout="this.style.color='#64748b';this.style.borderColor='rgba(255,255,255,.07)'">
+        <span>💡</span><span class="insight-btn-label-{{ cid }}">Insights</span>
+      </button>
+      <button onclick="openInsightDrawer('{{ cid }}')" title="Open insights panel" style="display:flex;align-items:center;gap:5px;font-size:10px;color:#475569;background:none;border:none;cursor:pointer;padding:3px 6px;transition:.15s;" onmouseover="this.style.color='#7c3aed'" onmouseout="this.style.color='#475569'">
+        <span>↗</span>
+      </button>
+    </div>
+    <div id="insight-inline-{{ cid }}" style="display:none;padding:0 10px 12px;flex-direction:column;gap:8px;">
+      {% if d.annotations %}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        {% for note in d.annotations %}
+        <span style="font-size:10px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.05);color:#cbd5e1;border:1px solid rgba(255,255,255,.06);">{{ note.label }} · {{ note.value }}{% if note.delta != None %} · Δ {{ note.delta }}{% endif %}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if cm and cm.reasons %}<div style="display:flex;flex-wrap:wrap;gap:6px;">{% for reason in cm.reasons|slice:':3' %}<span style="font-size:10px;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,.04);color:#94a3b8;border:1px solid rgba(255,255,255,.06);">{{ reason }}</span>{% endfor %}</div>{% endif %}
+      {% if chart.explanation %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+        {% if chart.explanation.summary %}<div style="padding:8px 10px;border-radius:12px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.18);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#a78bfa;margin-bottom:3px;">🧠 Story</div><div style="font-size:11px;color:#e2e8f0;line-height:1.45;">{{ chart.explanation.summary }}</div></div>{% endif %}
+        {% if chart.explanation.why_it_matters %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">🎯 Why it matters</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.explanation.why_it_matters }}</div></div>{% endif %}
+        {% if chart.explanation.how_to_read %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">👀 How to read</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.explanation.how_to_read }}</div></div>{% endif %}
+        {% if chart.explanation.next_action %}<div style="padding:8px 10px;border-radius:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.16);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#6ee7b7;margin-bottom:3px;">⚡ Next action</div><div style="font-size:11px;color:#d1fae5;line-height:1.45;">{{ chart.explanation.next_action }}</div></div>{% endif %}
+      </div>
+      {% endif %}
+      {% if d.insight_summary or d.insight_driver or d.insight_risk or d.insight_next_step %}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        {% if d.insight_summary %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">🔎 Insight</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ d.insight_summary }}</div></div>{% endif %}
+        {% if d.insight_driver %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">🧭 Read</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ d.insight_driver }}</div></div>{% endif %}
+        {% if d.insight_risk %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">⚠️ Risk</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ d.insight_risk }}</div></div>{% endif %}
+        {% if d.insight_next_step %}<div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);"><div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">⚡ Action</div><div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ d.insight_next_step }}</div></div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    <!-- Hidden data store for drawer -->
+    <script type="application/json" id="insight-data-{{ cid }}" style="display:none;">{"title":"{{ chart.title|escapejs }}","insight":"{{ d.insight_summary|default:chart.config_json.insight|default:''|escapejs }}","driver":"{{ d.insight_driver|default:''|escapejs }}","risk":"{{ d.insight_risk|default:''|escapejs }}","action":"{{ d.insight_next_step|default:''|escapejs }}","story":"{{ chart.explanation.summary|default:''|escapejs }}","why":"{{ chart.explanation.why_it_matters|default:''|escapejs }}","how":"{{ chart.explanation.how_to_read|default:''|escapejs }}","next":"{{ chart.explanation.next_action|default:''|escapejs }}"}</script>
+    {% endif %}
+
+    {% if chart.audit_meta %}
+    <div style="padding:0 10px 12px;">
+      <details style="border-top:1px solid rgba(255,255,255,.06);padding-top:8px;">
+        <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#94a3b8;font-size:10px;text-transform:uppercase;letter-spacing:.12em;">
+          <span>Audit details</span>
+          <span style="font-size:9px;color:#64748b;">{{ chart.audit_meta.confidence_label }}{% if chart.audit_meta.confidence_score != None %} · {{ chart.audit_meta.confidence_score }}{% endif %}</span>
+        </summary>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+          <div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Selected because</div>
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.audit_meta.selected_because }}</div>
+          </div>
+          <div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Source columns</div>
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.audit_meta.source_columns|join:', ' }}</div>
+          </div>
+          <div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Benchmark / time logic</div>
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.audit_meta.benchmark_used }} · {{ chart.audit_meta.time_logic_used }}</div>
+          </div>
+          <div style="padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#64748b;margin-bottom:3px;">Guardrail</div>
+            <div style="font-size:11px;color:#cbd5e1;line-height:1.45;">{{ chart.audit_meta.guardrail_result }}{% if chart.audit_meta.guardrail_reasons %} · {{ chart.audit_meta.guardrail_reasons|join:', ' }}{% endif %}</div>
+          </div>
+          {% if chart.kpi_audit_meta %}
+          <div style="grid-column:1/-1;padding:8px 10px;border-radius:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.16);">
+            <div style="font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#93c5fd;margin-bottom:3px;">KPI definition</div>
+            <div style="font-size:11px;color:#dbeafe;line-height:1.55;">
+              <strong>{{ chart.kpi_audit_meta.metric_name }}</strong> · Formula: {{ chart.kpi_audit_meta.formula }} · Benchmark: {{ chart.kpi_audit_meta.benchmark_source }} · Period: {{ chart.kpi_audit_meta.comparison_period }}
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </details>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endwith %}

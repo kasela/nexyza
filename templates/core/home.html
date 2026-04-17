@@ -1,0 +1,150 @@
+{% extends 'public_base.html' %}
+{% block title %}Nexyza — AI-Powered Data Analysis for Everyone{% endblock %}
+
+{% block content %}
+
+<!-- ── HERO ─────────────────────────────────────────────────────────────────── -->
+<section class="relative min-h-[92vh] flex items-center overflow-hidden">
+  <!-- Background mesh -->
+  <div class="absolute inset-0 pointer-events-none">
+    <div class="absolute top-1/3 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full opacity-20" style="background:radial-gradient(ellipse,#7c3aed,transparent 65%)"></div>
+    <div class="absolute top-0 right-0 w-[400px] h-[400px] rounded-full opacity-10" style="background:radial-gradient(circle,#3b82f6,transparent 70%)"></div>
+    <div class="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full opacity-8" style="background:radial-gradient(circle,#a78bfa,transparent 70%)"></div>
+    <!-- Grid overlay -->
+    <svg class="absolute inset-0 w-full h-full opacity-[0.03]" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(#grid)"/></svg>
+  </div>
+
+  <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32 w-full">
+    <div class="max-w-3xl mx-auto text-center">
+
+      <!-- Eyebrow badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-xs font-semibold mb-8" style="background:rgba(124,58,237,.12);border-color:rgba(124,58,237,.3);color:#c4b5fd">
+        <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+        Powered by Claude AI &mdash; v5.0 now available
+      </div>
+
+      <h1 class="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-white leading-[1.05] tracking-tight mb-7" style="font-family:'Sora',sans-serif">
+        Turn Any Data File Into
+        <span class="gradient-text"> Instant Intelligence</span>
+      </h1>
+
+      <p class="text-xl text-slate-400 leading-relaxed mb-10 max-w-2xl mx-auto">
+        Upload CSV, Excel, or JSON. Get AI-generated charts, anomaly detection, natural language queries, and full statistical analysis — in seconds. No code, no configuration.
+      </p>
+
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12">
+        <a href="{% if user.is_authenticated %}{% url 'analyser:upload' %}{% else %}{% url 'account_signup' %}{% endif %}"
+           class="btn-cta text-base px-8 py-4">
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+          Start Analysing Free
+        </a>
+        <a href="#how" class="btn-outline text-base px-8 py-4">
+          See how it works
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        </a>
+      </div>
+
+      <p class="text-slate-600 text-sm">Free forever &bull; No credit card required &bull; 5 analyses/month on free plan</p>
+    </div>
+
+    <!-- Hero file-type chips -->
+    <div class="flex items-center justify-center gap-3 mt-14 flex-wrap">
+      {% for ext, label, color in file_types %}
+      <div class="flex items-center gap-2 px-4 py-2 rounded-full border text-sm" style="background:{{ color.bg }};border-color:{{ color.border }};color:{{ color.text }}">
+        <span>{{ ext }}</span>
+        <span class="opacity-60">&bull;</span>
+        <span>{{ label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── SOCIAL PROOF STRIP ───────────────────────────────────────────────────── -->
+<section class="border-y border-white/5 py-6" style="background:rgba(255,255,255,.02)">
+  <div class="max-w-5xl mx-auto px-4 flex flex-wrap items-center justify-center gap-8">
+    {% for stat in stats %}
+    <div class="text-center">
+      <p class="text-2xl font-bold text-white" style="font-family:'Sora',sans-serif">{{ stat.value }}</p>
+      <p class="text-slate-500 text-xs mt-0.5">{{ stat.label }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ── FEATURES ─────────────────────────────────────────────────────────────── -->
+<section class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" id="features">
+  <div class="text-center mb-16">
+    <p class="text-violet-400 text-sm font-semibold uppercase tracking-widest mb-3">Everything you need</p>
+    <h2 class="text-4xl sm:text-5xl font-bold text-white" style="font-family:'Sora',sans-serif">From upload to insight in seconds</h2>
+    <p class="text-slate-400 mt-4 text-lg max-w-2xl mx-auto">A complete data analysis platform — no installs, no Python, no spreadsheet gymnastics.</p>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+    {% for feat in features %}
+    <div class="card p-7 transition-all duration-300 group">
+      <div class="w-11 h-11 rounded-xl flex items-center justify-center mb-5 text-xl" style="background:rgba(124,58,237,.15)">{{ feat.icon }}</div>
+      <h3 class="text-white font-semibold text-lg mb-2 group-hover:text-violet-300 transition-colors">{{ feat.title }}</h3>
+      <p class="text-slate-400 text-sm leading-relaxed">{{ feat.desc }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ─────────────────────────────────────────────────────────── -->
+<section class="py-24 border-t border-white/5" id="how">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center mb-16">
+      <p class="text-violet-400 text-sm font-semibold uppercase tracking-widest mb-3">Simple by design</p>
+      <h2 class="text-4xl font-bold text-white" style="font-family:'Sora',sans-serif">Three steps to data clarity</h2>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {% for step in steps %}
+      <div class="text-center">
+        <div class="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-5" style="background:linear-gradient(135deg,rgba(124,58,237,.2),rgba(59,130,246,.1));border:1px solid rgba(124,58,237,.25)">{{ step.icon }}</div>
+        <div class="w-7 h-7 rounded-full flex items-center justify-center text-violet-400 font-bold text-sm mx-auto mb-4 border border-violet-700/40" style="background:rgba(124,58,237,.1)">{{ forloop.counter }}</div>
+        <h3 class="text-white font-semibold text-lg mb-2">{{ step.title }}</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">{{ step.desc }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── TESTIMONIALS ─────────────────────────────────────────────────────────── -->
+<section class="py-20 border-t border-white/5">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    <p class="text-center text-violet-400 text-sm font-semibold uppercase tracking-widest mb-12">What analysts say</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% for t in testimonials %}
+      <div class="card p-7">
+        <div class="flex gap-0.5 mb-4">{% for i in "12345" %}<span class="text-amber-400 text-sm">★</span>{% endfor %}</div>
+        <p class="text-slate-300 text-sm leading-relaxed mb-5">"{{ t.quote }}"</p>
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">{{ t.name|first }}</div>
+          <div><p class="text-white text-sm font-medium">{{ t.name }}</p><p class="text-slate-500 text-xs">{{ t.role }}</p></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL CTA ─────────────────────────────────────────────────────────────── -->
+<section class="py-24 border-t border-white/5">
+  <div class="max-w-3xl mx-auto px-4 text-center">
+    <div class="card glow p-14" style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.04))">
+      <h2 class="text-4xl sm:text-5xl font-bold text-white mb-5" style="font-family:'Sora',sans-serif">
+        Ready to understand<br>your data?
+      </h2>
+      <p class="text-slate-400 text-lg mb-8">Join analysts who upload, analyse, and share data insights with Nexyza.</p>
+      <a href="{% if user.is_authenticated %}{% url 'analyser:upload' %}{% else %}{% url 'account_signup' %}{% endif %}"
+         class="btn-cta text-lg px-10 py-4.5 inline-flex">
+        Get Started for Free
+        <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/></svg>
+      </a>
+    </div>
+  </div>
+</section>
+
+{% endblock %}

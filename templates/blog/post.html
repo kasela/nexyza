@@ -1,0 +1,136 @@
+{% extends 'public_base.html' %}
+{% block title %}{{ post.title }} — Nexyza Blog{% endblock %}
+{% block meta_description %}{{ post.summary }}{% endblock %}
+{% block meta_keywords %}{{ post.title }}, data analysis, Nexyza{% endblock %}
+{% block og_title %}{{ post.title }}{% endblock %}
+{% block og_description %}{{ post.summary }}{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block og_image %}{{ post.get_og_image }}{% endblock %}
+{% block twitter_title %}{{ post.title }}{% endblock %}
+{% block twitter_description %}{{ post.summary }}{% endblock %}
+{% block twitter_image %}{{ post.get_og_image }}{% endblock %}
+{% block canonical %}https://nexyza.com/blog/{{ post.slug }}/{% endblock %}
+
+{% block structured_data %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "{{ post.title }}",
+  "description": "{{ post.summary }}",
+  "url": "https://nexyza.com/blog/{{ post.slug }}/",
+  "datePublished": "{{ post.published_at|date:'c' }}",
+  "dateModified": "{{ post.updated_at|date:'c' }}",
+  "author": { "@type": "Person", "name": "{{ post.author_name }}" },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Nexyza",
+    "url": "https://nexyza.com",
+    "logo": { "@type": "ImageObject", "url": "https://nexyza.com/static/img/logo.png" }
+  }{% if post.cover_image %},
+  "image": "{{ post.cover_image }}"{% endif %}
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;margin:0 auto;padding:48px 20px 80px;">
+
+  <!-- Breadcrumb -->
+  <nav style="font-size:13px;color:#475569;margin-bottom:28px;">
+    <a href="/" style="color:#64748b;text-decoration:none;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#64748b'">Home</a>
+    <span style="margin:0 8px;">›</span>
+    <a href="{% url 'blog:index' %}" style="color:#64748b;text-decoration:none;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#64748b'">Blog</a>
+    <span style="margin:0 8px;">›</span>
+    <span style="color:#94a3b8;">{{ post.title|truncatechars:50 }}</span>
+  </nav>
+
+  <!-- Cover -->
+  {% if post.cover_image %}
+  <div style="border-radius:16px;overflow:hidden;margin-bottom:36px;height:360px;">
+    <img src="{{ post.cover_image }}" alt="{{ post.title }}"
+         style="width:100%;height:100%;object-fit:cover;">
+  </div>
+  {% endif %}
+
+  <!-- Header -->
+  <div style="margin-bottom:32px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <span style="font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(124,58,237,.2);color:#a78bfa;font-weight:600;">{{ post.get_category_display }}</span>
+      <span style="color:#334155;font-size:12px;">{{ post.reading_time }} min read</span>
+    </div>
+    <h1 style="color:#fff;font-size:2.2rem;font-weight:800;margin:0 0 16px;line-height:1.25;font-family:'Sora',sans-serif;">{{ post.title }}</h1>
+    <p style="color:#94a3b8;font-size:1.05rem;line-height:1.7;margin:0 0 20px;">{{ post.summary }}</p>
+    <div style="display:flex;align-items:center;gap:10px;padding-top:16px;border-top:1px solid rgba(255,255,255,.06);">
+      {% if post.author_avatar %}
+      <img src="{{ post.author_avatar }}" alt="{{ post.author_name }}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">
+      {% else %}
+      <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;">{{ post.author_name|first|upper }}</div>
+      {% endif %}
+      <div>
+        <p style="color:#e2e8f0;font-size:13px;font-weight:600;margin:0;">{{ post.author_name }}</p>
+        <p style="color:#475569;font-size:12px;margin:0;">{{ post.published_at|date:"F j, Y" }}</p>
+      </div>
+      <!-- Social share -->
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <a href="https://twitter.com/intent/tweet?text={{ post.title|urlencode }}&url=https://nexyza.com/blog/{{ post.slug }}/"
+           target="_blank" rel="noopener"
+           style="padding:6px 12px;border-radius:8px;background:rgba(29,161,242,.1);border:1px solid rgba(29,161,242,.2);color:#60a5fa;font-size:11px;font-weight:600;text-decoration:none;">
+          𝕏 Share
+        </a>
+        <a href="https://www.linkedin.com/sharing/share-offsite/?url=https://nexyza.com/blog/{{ post.slug }}/"
+           target="_blank" rel="noopener"
+           style="padding:6px 12px;border-radius:8px;background:rgba(10,102,194,.1);border:1px solid rgba(10,102,194,.2);color:#60a5fa;font-size:11px;font-weight:600;text-decoration:none;">
+          in Share
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div style="color:#94a3b8;font-size:15px;line-height:1.85;" class="blog-content">
+    {{ post.content|safe }}
+  </div>
+
+  <!-- CTA box -->
+  <div style="margin-top:48px;background:linear-gradient(135deg,rgba(124,58,237,.12),rgba(59,130,246,.06));border:1px solid rgba(124,58,237,.25);border-radius:16px;padding:28px 32px;text-align:center;">
+    <p style="color:#a78bfa;font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px;">Try Nexyza Free</p>
+    <p style="color:#fff;font-size:1.15rem;font-weight:700;margin:0 0 10px;">Analyse your data in seconds</p>
+    <p style="color:#64748b;font-size:13px;margin:0 0 20px;">Upload any CSV, Excel, or JSON file and get instant AI-powered charts and insights.</p>
+    <a href="/accounts/signup/" style="display:inline-block;padding:11px 28px;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-weight:700;font-size:14px;border-radius:10px;text-decoration:none;">Start for Free →</a>
+  </div>
+
+  <!-- Related posts -->
+  {% if related %}
+  <div style="margin-top:56px;">
+    <h2 style="color:#e2e8f0;font-size:1.1rem;font-weight:700;margin:0 0 20px;">Related Articles</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;">
+      {% for r in related %}
+      <a href="{% url 'blog:post' r.slug %}" style="text-decoration:none;">
+        <div style="background:rgba(15,12,30,.6);border:1px solid rgba(51,65,85,.4);border-radius:12px;padding:16px;transition:.15s;" onmouseover="this.style.borderColor='rgba(124,58,237,.3)'" onmouseout="this.style.borderColor='rgba(51,65,85,.4)'">
+          <p style="color:#e2e8f0;font-size:13px;font-weight:600;margin:0 0 6px;line-height:1.4;">{{ r.title }}</p>
+          <p style="color:#475569;font-size:11px;margin:0;">{{ r.reading_time }}m · {{ r.published_at|date:"M d" }}</p>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.blog-content h2 { color: #e2e8f0; font-size: 1.3rem; font-weight: 700; margin: 2em 0 0.6em; }
+.blog-content h3 { color: #cbd5e1; font-size: 1.1rem; font-weight: 600; margin: 1.6em 0 0.5em; }
+.blog-content p  { margin: 0 0 1.2em; }
+.blog-content ul, .blog-content ol { margin: 0 0 1.2em 1.4em; }
+.blog-content li { margin-bottom: 0.5em; }
+.blog-content strong { color: #cbd5e1; font-weight: 600; }
+.blog-content a  { color: #a78bfa; text-decoration: none; }
+.blog-content a:hover { text-decoration: underline; }
+.blog-content code { background: rgba(124,58,237,.12); color: #a78bfa; padding: 2px 6px; border-radius: 4px; font-size: 0.9em; font-family: monospace; }
+.blog-content pre { background: rgba(15,12,30,.8); border: 1px solid rgba(51,65,85,.5); border-radius: 10px; padding: 16px 20px; overflow-x: auto; margin: 1.2em 0; }
+.blog-content pre code { background: none; padding: 0; color: #e2e8f0; }
+.blog-content blockquote { border-left: 3px solid #7c3aed; margin: 1.2em 0; padding: 8px 16px; background: rgba(124,58,237,.06); border-radius: 0 8px 8px 0; }
+.blog-content hr { border: none; border-top: 1px solid rgba(51,65,85,.4); margin: 2em 0; }
+</style>
+{% endblock %}

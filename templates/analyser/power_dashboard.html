@@ -1,0 +1,824 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% block title %}{{ dashboard_title }} | Power Dashboard{% endblock %}
+
+{% block extra_head %}
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Outfit:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══ FULLSCREEN TAKEOVER ══════════════════════════════════════
+   Covers the entire viewport including the app sidebar + topnav
+═════════════════════════════════════════════════════════════════ */
+#pbr {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #080d18; color: #ddeeff;
+  font-family: 'Outfit', sans-serif;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  /* tokens */
+  --sf: #0d1525; --sf2: #111c32;
+  --bd: rgba(76,140,255,.12); --bdh: rgba(76,140,255,.28);
+  --ac: #4c8eff; --a2: #9b6bfc; --a3: #00cfb0; --a4: #f5a623; --a5: #f06262;
+  --mu: #5a6e8c; --tx: #ddeeff;
+  --r: 11px; --t: .18s cubic-bezier(.4,0,.2,1);
+}
+#pbr *::-webkit-scrollbar { width: 4px; height: 4px; }
+#pbr *::-webkit-scrollbar-track { background: transparent; }
+#pbr *::-webkit-scrollbar-thumb { background: rgba(76,140,255,.22); border-radius: 2px; }
+
+/* ═══ TOP BAR ═════════════════════════════════════════════════ */
+.pb-top {
+  height: 50px; min-height: 50px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; gap: 14px;
+  background: #060d1c; border-bottom: 1px solid var(--bd);
+}
+.pb-top-l { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
+.pb-logo {
+  width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+  background: linear-gradient(135deg,var(--ac),var(--a2));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 14px rgba(76,140,255,.38);
+}
+.pb-logo svg { width: 15px; height: 15px; color: #fff; }
+.pb-title { min-width: 0; }
+.pb-title h1 {
+  font-family: 'Syne', sans-serif; font-size: 13.5px; font-weight: 700;
+  color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pb-title p {
+  font-size: 10.5px; color: var(--mu); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pb-top-r { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.pb-live {
+  display: flex; align-items: center; gap: 5px; padding: 4px 11px;
+  border-radius: 999px; background: rgba(0,207,176,.07);
+  border: 1px solid rgba(0,207,176,.18); color: var(--a3);
+  font-size: 11px; font-weight: 600;
+}
+.pb-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--a3); animation: blink 2s infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.pb-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--bd); background: rgba(255,255,255,.03);
+  color: #8facce; cursor: pointer; transition: var(--t);
+  font-family: 'Outfit',sans-serif; white-space: nowrap; text-decoration: none;
+}
+.pb-btn:hover { background: rgba(255,255,255,.07); border-color: var(--bdh); color: #fff; }
+.pb-btn.back { background: rgba(76,140,255,.1); border-color: rgba(76,140,255,.28); color: #7db5ff; }
+.pb-btn.back:hover { background: rgba(76,140,255,.2); }
+.pb-btn.hi { background: linear-gradient(135deg,rgba(76,140,255,.18),rgba(155,107,252,.14)); border-color: rgba(76,140,255,.35); color: #90c0ff; }
+.pb-btn.hi:hover { background: linear-gradient(135deg,rgba(76,140,255,.28),rgba(155,107,252,.22)); }
+.pb-btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+
+/* ═══ FILTER BAR ══════════════════════════════════════════════ */
+.pb-filters {
+  height: 46px; min-height: 46px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 20px; overflow-x: auto;
+  background: rgba(6,11,22,.97); border-bottom: 1px solid var(--bd);
+}
+.pb-filters::-webkit-scrollbar { height: 2px; }
+.pb-flbl {
+  font-size: 9.5px; letter-spacing: .22em; text-transform: uppercase;
+  color: #304050; font-weight: 700; white-space: nowrap; padding-right: 6px; flex-shrink: 0;
+}
+.pb-fsel {
+  height: 30px; padding: 0 26px 0 9px; border-radius: 7px;
+  background: var(--sf); border: 1px solid var(--bd); color: var(--tx);
+  font-size: 12px; outline: none; cursor: pointer; transition: var(--t);
+  font-family: 'Outfit',sans-serif; appearance: none; flex-shrink: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%235a6e8c' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 7px center;
+  min-width: 100px; max-width: 160px;
+}
+.pb-fsel:focus { border-color: rgba(76,140,255,.4); }
+.pb-fsep { width: 1px; height: 18px; background: var(--bd); margin: 0 4px; flex-shrink: 0; }
+.pb-freset {
+  height: 30px; padding: 0 12px; border-radius: 7px; flex-shrink: 0;
+  background: transparent; border: 1px solid rgba(76,140,255,.18);
+  color: #4e6fa0; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; transition: var(--t); font-family: 'Outfit',sans-serif;
+}
+.pb-freset:hover { background: rgba(76,140,255,.1); color: #7db5ff; }
+
+/* ═══ CANVAS (middle scrollable zone) ════════════════════════ */
+.pb-canvas {
+  flex: 1; min-height: 0;   /* ← critical: allows shrink inside flex column */
+  overflow-y: auto; overflow-x: hidden;
+  background: #080d18;
+}
+
+/* ═══ PAGES ═══════════════════════════════════════════════════ */
+.pb-page {
+  display: none; flex-direction: column; gap: 14px;
+  padding: 16px 20px 20px;
+  min-height: 100%;
+}
+.pb-page.active { display: flex; animation: pgIn .22s both; }
+@keyframes pgIn { from{opacity:0;transform:translateY(4px)} to{opacity:1;transform:none} }
+
+/* ═══ KPI ROW ═════════════════════════════════════════════════ */
+.pb-kpis { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; }
+.pb-kpi {
+  position: relative; overflow: hidden;
+  background: var(--sf); border: 1px solid var(--bd); border-radius: var(--r);
+  padding: 16px 18px 14px; transition: var(--t);
+}
+.pb-kpi::before {
+  content:''; position:absolute; top:0;left:0;right:0;height:2px;
+  background: var(--kc,var(--ac));
+}
+.pb-kpi:nth-child(1){--kc:linear-gradient(90deg,#4c8eff,#7db5ff)}
+.pb-kpi:nth-child(2){--kc:linear-gradient(90deg,#00cfb0,#2de8cf)}
+.pb-kpi:nth-child(3){--kc:linear-gradient(90deg,#f5a623,#fbbf24)}
+.pb-kpi:nth-child(4){--kc:linear-gradient(90deg,#9b6bfc,#c084fc)}
+.pb-kpi:hover { border-color: var(--bdh); box-shadow: 0 6px 22px rgba(0,0,0,.28); }
+.pb-korb {
+  position:absolute; top:-14px; right:-14px; width:68px; height:68px;
+  border-radius:50%; opacity:.06; pointer-events:none;
+  background:radial-gradient(circle,var(--ko,#4c8eff) 0%,transparent 70%);
+}
+.pb-kpi:nth-child(1) .pb-korb{--ko:#4c8eff} .pb-kpi:nth-child(2) .pb-korb{--ko:#00cfb0}
+.pb-kpi:nth-child(3) .pb-korb{--ko:#f5a623} .pb-kpi:nth-child(4) .pb-korb{--ko:#9b6bfc}
+.pb-klbl { font-size: 9.5px; letter-spacing:.22em; text-transform:uppercase; color:var(--mu); font-weight:700; margin-bottom:8px; }
+.pb-kval { font-family:'Syne',sans-serif; font-size:30px; font-weight:800; color:#fff; line-height:1.05; margin-bottom:8px; letter-spacing:-.02em; word-break:break-all; }
+.pb-kfoot { display:flex; gap:7px; align-items:center; flex-wrap:wrap; }
+.pb-badge { display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px; font-size:10px; font-weight:700; }
+.pb-badge.g { background:rgba(0,207,176,.12); color:#2de8cf; border:1px solid rgba(0,207,176,.2); }
+.pb-badge.w { background:rgba(245,166,35,.12); color:#fbbf24; border:1px solid rgba(245,166,35,.2); }
+.pb-badge.b { background:rgba(240,98,98,.12); color:#f87171; border:1px solid rgba(240,98,98,.2); }
+.pb-kcap { font-size:11px; color:#3f5268; }
+
+/* ═══ CHART LAYOUT GRIDS ══════════════════════════════════════ */
+.pb-r2  { display:grid; grid-template-columns:1.3fr .7fr; gap:12px; }
+.pb-r2x { display:grid; grid-template-columns:.7fr 1.3fr; gap:12px; }
+.pb-r1  { display:grid; grid-template-columns:1fr;        gap:12px; }
+
+/* ═══ CARD ════════════════════════════════════════════════════ */
+.pb-card {
+  background:var(--sf); border:1px solid var(--bd); border-radius:var(--r);
+  overflow:hidden; display:flex; flex-direction:column; transition:var(--t);
+}
+.pb-card:hover { border-color: var(--bdh); }
+.pb-chd {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:11px 14px 9px; border-bottom:1px solid rgba(76,140,255,.06);
+  flex-shrink:0; gap:10px;
+}
+.pb-chd-l h3 { font-family:'Syne',sans-serif; font-size:13px; font-weight:700; color:#cfe0ff; }
+.pb-chd-l p  { font-size:10.5px; color:#3f5268; margin-top:2px; }
+.pb-chd-r { display:flex; align-items:center; gap:6px; flex-shrink:0; }
+.pb-tag {
+  padding:2px 8px; border-radius:999px; border:1px solid var(--bd);
+  font-size:9.5px; color:var(--mu); text-transform:uppercase; letter-spacing:.13em; white-space:nowrap;
+}
+/* Expand button */
+.pb-xbtn {
+  display:flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:6px; border:1px solid var(--bd);
+  background:transparent; color:var(--mu); cursor:pointer; transition:var(--t); flex-shrink:0;
+}
+.pb-xbtn:hover { border-color:var(--bdh); color:var(--tx); background:rgba(76,140,255,.1); }
+.pb-xbtn svg { width:11px; height:11px; pointer-events:none; }
+/* Card body — chart area */
+.pb-cbody { padding:12px 14px 14px; flex:1; position:relative; }
+/* Fixed heights for normal cards */
+.pb-h320 { height:320px; }
+.pb-h270 { height:270px; }
+.pb-h260 { height:260px; }
+/* Canvas wrapper */
+.pb-cw { position:relative; width:100%; height:100%; }
+
+/* Mini 2×2 chart grid inside a card */
+.pb-mgrid { display:grid; grid-template-columns:1fr 1fr; gap:8px; height:100%; }
+.pb-mc { background:rgba(5,9,20,.8); border:1px solid rgba(76,140,255,.07); border-radius:9px; padding:8px 10px; display:flex; flex-direction:column; }
+.pb-mc-title { font-size:10px; font-weight:700; color:#6a88aa; margin-bottom:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pb-mc-cw { flex:1; min-height:0; position:relative; }
+
+/* Empty state */
+.pb-empty {
+  width:100%; height:100%; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:8px;
+  color:var(--mu); font-size:12.5px;
+  border:1px dashed rgba(76,140,255,.1); border-radius:9px;
+}
+.pb-empty svg { width:24px; height:24px; opacity:.25; }
+
+/* ═══ FULLSCREEN OVERLAY ══════════════════════════════════════
+   When a chart expand btn is clicked, the card is moved into
+   a fixed overlay that covers the full canvas area.
+════════════════════════════════════════════════════════════════ */
+#pb-fs-overlay {
+  display: none;
+  position: fixed;
+  /* sit exactly over the canvas — top/bottom set by JS */
+  left: 0; right: 0;
+  z-index: 10000;
+  background: #080d18;
+  flex-direction: column;
+}
+#pb-fs-overlay.open { display: flex; }
+#pb-fs-inner {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+}
+#pb-fs-inner .pb-card {
+  flex: 1; min-height: 0; border-radius: 0; border: none;
+}
+#pb-fs-inner .pb-cbody {
+  flex: 1; height: auto !important;
+}
+#pb-fs-close {
+  position: absolute; top: 10px; right: 14px; z-index: 10001;
+  display: flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--bd); background: rgba(255,255,255,.05);
+  color: #8facce; cursor: pointer; font-family: 'Outfit',sans-serif;
+  transition: var(--t);
+}
+#pb-fs-close:hover { background: rgba(255,255,255,.1); color: #fff; }
+#pb-fs-close svg { width: 13px; height: 13px; }
+
+/* ═══ DATA PAGE ═══════════════════════════════════════════════ */
+#page-data {
+  display: none; flex-direction: column;
+  height: 100%; /* fills .pb-canvas which is flex:1 */
+  padding: 0;
+}
+#page-data.active { display: flex; }
+.pb-dtool {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:11px 20px 10px; gap:12px; flex-shrink:0;
+  border-bottom:1px solid var(--bd); background:#080d18;
+}
+.pb-swrap { position:relative; flex:1; max-width:360px; }
+.pb-swrap svg { position:absolute;left:10px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--mu);pointer-events:none; }
+.pb-search {
+  width:100%; height:32px; padding:0 12px 0 32px; border-radius:8px;
+  background:var(--sf); border:1px solid var(--bd); color:var(--tx);
+  font-size:12.5px; outline:none; transition:var(--t); font-family:'Outfit',sans-serif;
+}
+.pb-search:focus { border-color:rgba(76,140,255,.4); box-shadow:0 0 0 2px rgba(76,140,255,.08); }
+.pb-search::placeholder { color:#2e4060; }
+.pb-dmeta { font-size:11.5px; color:var(--mu); white-space:nowrap; flex-shrink:0; }
+.pb-dmeta strong { color:#6a8ab0; }
+.pb-twrap { flex:1; overflow:auto; }
+.pb-tbl { width:100%; border-collapse:collapse; }
+.pb-tbl thead th {
+  position:sticky; top:0; z-index:2;
+  text-align:left; padding:9px 14px;
+  font-size:9.5px; letter-spacing:.18em; text-transform:uppercase;
+  color:#2e4060; font-weight:700; background:#07101e;
+  border-bottom:1px solid rgba(76,140,255,.1);
+  white-space:nowrap; cursor:pointer; user-select:none;
+}
+.pb-tbl thead th:hover { color:#6a8ab0; }
+.pb-tbl thead th.sa::after { content:' ▲'; font-size:8px; }
+.pb-tbl thead th.sd::after { content:' ▼'; font-size:8px; }
+.pb-tbl thead th.computed { color:#4c8eff; }
+.pb-tbl tbody tr:hover td { background:rgba(76,140,255,.04); }
+.pb-tbl td {
+  padding:8px 14px; font-size:12px; color:#9ab8d6;
+  border-bottom:1px solid rgba(76,140,255,.04);
+  font-family:'DM Mono',monospace; white-space:nowrap;
+  max-width:240px; overflow:hidden; text-overflow:ellipsis;
+}
+.pb-tbl tr:last-child td { border-bottom:none; }
+.pb-tbl td.computed { color:#7db5ff; font-style:italic; }
+.pb-norows { padding:40px; text-align:center; color:var(--mu); font-size:13px; }
+
+/* ═══ TAB BAR ═════════════════════════════════════════════════ */
+.pb-tabs {
+  height:40px; min-height:40px; flex-shrink:0;
+  display:flex; align-items:flex-end;
+  padding:0 20px; gap:1px; overflow-x:auto;
+  background:#050a14; border-top:1px solid var(--bd);
+}
+.pb-tabs::-webkit-scrollbar { height:2px; }
+.pb-tab {
+  display:flex; align-items:center; gap:6px;
+  padding:0 15px; height:32px;
+  border-radius:7px 7px 0 0; font-size:12px; font-weight:600;
+  cursor:pointer; border:1px solid transparent; border-bottom:none;
+  color:#3a5070; background:transparent; transition:var(--t);
+  white-space:nowrap; flex-shrink:0; font-family:'Outfit',sans-serif;
+}
+.pb-tab:hover { color:#7a9bc0; background:rgba(76,140,255,.06); }
+.pb-tab.active { color:#fff; background:var(--sf); border-color:var(--bd); border-bottom-color:var(--sf); box-shadow:0 -2px 0 0 var(--ac) inset; }
+.pb-tabi { width:12px; height:12px; flex-shrink:0; opacity:.6; }
+.pb-tab.active .pb-tabi { opacity:1; }
+.pb-tbadge { font-size:9.5px; padding:1px 5px; border-radius:4px; background:rgba(76,140,255,.12); color:#4c6a9a; }
+.pb-tab.active .pb-tbadge { color:#7db5ff; background:rgba(76,140,255,.2); }
+
+/* ═══ RESPONSIVE ══════════════════════════════════════════════ */
+@media(max-width:1200px){.pb-kpis{grid-template-columns:repeat(2,1fr)}.pb-r2,.pb-r2x{grid-template-columns:1fr}}
+@media(max-width:680px){.pb-kpis{grid-template-columns:1fr 1fr}.pb-top-r .pb-btn:not(.back):not(.hi){display:none}}
+@media(max-width:420px){.pb-kpis{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="pbr">
+
+  <!-- TOP BAR -->
+  <header class="pb-top">
+    <div class="pb-top-l">
+      <div class="pb-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/>
+        </svg>
+      </div>
+      <div class="pb-title">
+        <h1>{{ dashboard_title }}</h1>
+        <p>{{ dashboard_subtitle }}</p>
+      </div>
+    </div>
+    <div class="pb-top-r">
+      <div class="pb-live"><span class="pb-live-dot"></span>{{ upload.row_count|default:0 }} rows &middot; {{ upload.column_count|default:0 }} cols</div>
+      <a class="pb-btn back" href="{% url 'analyser:result' upload.id %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Return to Workspace
+      </a>
+      <a class="pb-btn" href="{% url 'analyser:chart_gallery' upload.id %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Gallery
+      </a>
+      <a class="pb-btn hi" href="{% url 'analyser:adaptive_refinement' upload.id %}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>Refine
+      </a>
+    </div>
+  </header>
+
+  <!-- FILTER BAR -->
+  <div class="pb-filters">
+    {% for filter in filters %}
+    <span class="pb-flbl">{{ filter.label }}</span>
+    <select class="pb-fsel">{% for opt in filter.options %}<option>{{ opt }}</option>{% endfor %}</select>
+    {% if not forloop.last %}<div class="pb-fsep"></div>{% endif %}
+    {% endfor %}
+    {% if filters|length < 3 %}{% if filters %}<div class="pb-fsep"></div>{% endif %}
+    <span class="pb-flbl">View</span>
+    <select class="pb-fsel"><option>All Data</option><option>Executive Focus</option><option>Comparison Focus</option></select>
+    {% endif %}
+    <div class="pb-fsep"></div>
+    <button class="pb-freset" id="pb-reset">&#8635; Reset</button>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="pb-canvas" id="pb-canvas">
+
+    <!-- PAGE: Overview -->
+    <div class="pb-page active" id="page-overview">
+      <!-- KPI Cards -->
+      <div class="pb-kpis" id="pb-kpi-row">
+        {% for chart in kpi_charts %}{% with d=chart.cached_data %}
+        <article class="pb-kpi">
+          <div class="pb-korb"></div>
+          <div class="pb-klbl">{{ chart.title }}</div>
+          <div class="pb-kval">{{ d.value|default:'—' }}</div>
+          <div class="pb-kfoot">
+            {% if d.comparison and d.comparison.variance_value %}
+            <span class="pb-badge {% if d.comparison.variance_direction == 'positive' %}g{% elif d.comparison.variance_direction == 'negative' %}b{% else %}w{% endif %}">{{ d.comparison.variance_value }}</span>
+            {% endif %}
+            <span class="pb-kcap">{{ d.label|default:'Current snapshot' }}</span>
+          </div>
+        </article>
+        {% endwith %}{% empty %}
+        <article class="pb-kpi"><div class="pb-korb"></div><div class="pb-klbl">Achievement</div><div class="pb-kval">—</div><div class="pb-kfoot"><span class="pb-kcap">Generating KPIs…</span></div></article>
+        <article class="pb-kpi"><div class="pb-korb"></div><div class="pb-klbl">Target</div><div class="pb-kval">—</div><div class="pb-kfoot"><span class="pb-kcap">Generating KPIs…</span></div></article>
+        <article class="pb-kpi"><div class="pb-korb"></div><div class="pb-klbl">Achievement %</div><div class="pb-kval">—</div><div class="pb-kfoot"><span class="pb-kcap">Generating KPIs…</span></div></article>
+        <article class="pb-kpi"><div class="pb-korb"></div><div class="pb-klbl">Variance</div><div class="pb-kval">—</div><div class="pb-kfoot"><span class="pb-kcap">Generating KPIs…</span></div></article>
+        {% endfor %}
+      </div>
+      <!-- Hero Charts Row -->
+      <div class="pb-r2">
+        <article class="pb-card">
+          <div class="pb-chd">
+            <div class="pb-chd-l"><h3 id="ht0">Main Trend</h3><p>Primary time or performance view</p></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="hy0">Trend</span><button class="pb-xbtn" data-cid="hc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+          </div>
+          <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="hc0"></canvas></div></div>
+        </article>
+        <article class="pb-card">
+          <div class="pb-chd">
+            <div class="pb-chd-l"><h3 id="ht1">Main Comparison</h3><p>Segment or ranking comparison</p></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="hy1">Bar</span><button class="pb-xbtn" data-cid="hc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+          </div>
+          <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="hc1"></canvas></div></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- PAGE: Analysis/Performance -->
+    <div class="pb-page" id="page-analysis">
+      <div class="pb-r2x">
+        <article class="pb-card">
+          <div class="pb-chd">
+            <div class="pb-chd-l"><h3 id="st1">Composition View</h3><p>Share, mix or contribution</p></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="sy1">Mix</span><button class="pb-xbtn" data-cid="sc1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+          </div>
+          <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="sc1"></canvas></div></div>
+        </article>
+        <article class="pb-card">
+          <div class="pb-chd">
+            <div class="pb-chd-l"><h3 id="st0">Performance View</h3><p>Attainment, gap or score</p></div>
+            <div class="pb-chd-r"><span class="pb-tag" id="sy0">Analysis</span><button class="pb-xbtn" data-cid="sc0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+          </div>
+          <div class="pb-cbody pb-h320"><div class="pb-cw"><canvas id="sc0"></canvas></div></div>
+        </article>
+      </div>
+      <div class="pb-r1">
+        <article class="pb-card">
+          <div class="pb-chd">
+            <div class="pb-chd-l"><h3>Supporting Charts</h3><p>Additional chart pack for deeper analysis</p></div>
+            <div class="pb-chd-r"><span class="pb-tag">Deep Dive</span><button class="pb-xbtn" data-cid="extras-card"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg></button></div>
+          </div>
+          <div class="pb-cbody pb-h260" id="pb-extras"></div>
+        </article>
+      </div>
+    </div>
+
+    <!-- PAGE: Data View — lives inside canvas but uses flex:1 to fill it -->
+    <div id="page-data">
+      <div class="pb-dtool">
+        <div class="pb-swrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <input class="pb-search" id="pb-search" type="text" placeholder="Search rows, values, columns…">
+        </div>
+        <div class="pb-dmeta">Showing <strong id="pb-rcnt">0</strong> of <strong>{{ upload.row_count|default:0 }}</strong> rows &nbsp;·&nbsp; <strong>{{ upload.column_count|default:0 }}</strong> cols</div>
+      </div>
+      <div class="pb-twrap">
+        {% if table_columns %}
+        <table class="pb-tbl">
+          <thead><tr id="pb-thead">
+            {% for col in table_columns %}<th data-ci="{{ forloop.counter0 }}">{{ col }}</th>{% endfor %}
+          </tr></thead>
+          <tbody id="pb-tbody"></tbody>
+        </table>
+        {% else %}<div class="pb-norows">No data preview available.</div>{% endif %}
+      </div>
+    </div>
+
+  </div><!-- /pb-canvas -->
+
+  <!-- FULLSCREEN OVERLAY (chart expand) -->
+  <div id="pb-fs-overlay">
+    <button id="pb-fs-close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 00-2 2v3M21 8V5a2 2 0 00-2-2h-3M3 16v3a2 2 0 002 2h3m13-3v3a2 2 0 01-2 2h-3"/></svg>
+      Exit Fullscreen
+    </button>
+    <div id="pb-fs-inner"></div>
+  </div>
+
+  <!-- TAB BAR — bottom, Power BI style -->
+  <div class="pb-tabs" id="pb-tabbar">
+    {% for section in nav_sections %}
+    {% if section.key != 'data' %}
+    <button class="pb-tab{% if forloop.first %} active{% endif %}" data-page="{{ section.key }}">
+      {% if forloop.first %}
+      <svg class="pb-tabi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      {% else %}
+      <svg class="pb-tabi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      {% endif %}
+      {{ section.label }}
+    </button>
+    {% endif %}
+    {% endfor %}
+    <button class="pb-tab" data-page="data">
+      <svg class="pb-tabi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
+      Data View <span class="pb-tbadge">{{ upload.row_count|default:0 }}</span>
+    </button>
+  </div>
+
+</div><!-- /pbr -->
+
+<!-- DATA BLOBS -->
+<script id="j-bundles" type="application/json">{{ chart_bundles_json|safe }}</script>
+<script id="j-rows"    type="application/json">{{ table_rows_json|safe }}</script>
+<script id="j-cols"    type="application/json">{{ table_columns_json|safe }}</script>
+
+<script>
+(function(){
+'use strict';
+
+/* ── parse blobs ─────────────────────────────────────────── */
+const BUNDLES  = JSON.parse(document.getElementById('j-bundles').textContent || '{}');
+const RAW_ROWS = JSON.parse(document.getElementById('j-rows').textContent    || '[]');
+const BASE_COLS= JSON.parse(document.getElementById('j-cols').textContent    || '[]');
+
+/* ── enrich rows with computed measures ──────────────────── */
+const COMP = [];   // names of computed cols
+function enrichRows(rows){
+  if(!rows.length) return rows;
+  const nums = BASE_COLS.filter(c=>{
+    const s=rows.slice(0,5).map(r=>r[c]).filter(v=>v!=null&&v!=='');
+    return s.some(v=>!isNaN(parseFloat(v)));
+  });
+  const acol = nums.find(c=>/achiev|actual|sales|revenue/i.test(c));
+  const tcol = nums.find(c=>/target|budget|plan|goal/i.test(c));
+  if(acol&&tcol){
+    const key='Variance %';
+    if(!BASE_COLS.includes(key)){
+      COMP.push(key);
+      rows=rows.map(r=>{
+        const a=parseFloat(r[acol]),t=parseFloat(r[tcol]);
+        return{...r,[key]:(!isNaN(a)&&!isNaN(t)&&t!==0)?((a-t)/Math.abs(t)*100).toFixed(2)+'%':'—'};
+      });
+    }
+  }
+  return rows;
+}
+const ALL_ROWS = enrichRows(RAW_ROWS.map(r=>({...r})));
+const ALL_COLS = [...BASE_COLS,...COMP];
+
+/* ── chart helpers ───────────────────────────────────────── */
+const P=['#4c8eff','#00cfb0','#f5a623','#9b6bfc','#f06262','#22d3ee','#84cc16','#fb923c','#e879f9','#34d399'];
+const GR='rgba(76,140,255,.06)',TK='#2e4060',LG='#4a6888';
+const TM={horizontal_bar:'bar',area:'line',rolling_line:'line',cumulative_line:'line',variance_bar:'bar',waterfall:'bar',bullet:'bar',progress_ring:'doughnut',pareto:'bar',histogram:'bar'};
+const ct=t=>TM[t]||t||'bar';
+const isH=(t,p)=>t==='horizontal_bar'||(!!p&&p.indexAxis==='y');
+
+function mkOpts(h,compact){
+  const o={
+    responsive:true,maintainAspectRatio:false,indexAxis:h?'y':'x',
+    animation:{duration:500,easing:'easeOutQuart'},
+    plugins:{
+      legend:{display:!compact,labels:{color:LG,boxWidth:9,usePointStyle:true,padding:11,font:{size:10.5,family:"'Outfit',sans-serif"}}},
+      tooltip:{enabled:true,backgroundColor:'#0d1525',borderColor:'rgba(76,140,255,.2)',borderWidth:1,titleColor:'#cfe0ff',bodyColor:'#5a6e8c',padding:10,cornerRadius:8,displayColors:true}
+    },
+    scales:{
+      x:{ticks:{color:TK,font:{size:10}},grid:{color:GR},border:{display:false}},
+      y:{ticks:{color:TK,font:{size:10}},grid:{color:GR},border:{display:false}}
+    }
+  };
+  if(h){o.scales.x.ticks.maxTicksLimit=6;}
+  return o;
+}
+
+function mkCfg(b,compact){
+  const pay=b.payload||{};
+  if(pay.kpi)return null;
+  if(pay.heatmap)return{type:'bar',data:{labels:pay.columns||[],datasets:[{label:'Summary',data:(pay.matrix||[])[0]||[],borderRadius:5,backgroundColor:P[0]}]},options:mkOpts(false,compact)};
+  const type=ct(b.type),h=isH(b.type,pay);
+  return{
+    type,options:mkOpts(h,compact),
+    data:{labels:pay.labels||[],datasets:(pay.datasets||[]).map((ds,i)=>{
+      const c=ds.backgroundColor||P[i%P.length];
+      return{...ds,type:ct(ds.type||b.type),
+        borderRadius:(type==='bar'&&!h)?6:0,tension:.3,
+        fill:b.type==='area'||ds.fill===true,
+        backgroundColor:c,borderColor:c,
+        borderWidth:ds.borderWidth||(type==='line'?2.5:1),
+        pointRadius:type==='line'?3:0,pointHoverRadius:type==='line'?5:0};
+    })}
+  };
+}
+
+/* ── chart registry ──────────────────────────────────────── */
+const CHS={};
+function renderChart(canvasId,bundle,compact){
+  if(!bundle)return;
+  const el=document.getElementById(canvasId);
+  if(!el)return;
+  const cfg=mkCfg(bundle,compact);
+  if(!cfg){
+    const msg=document.createElement('div');
+    msg.className='pb-empty';
+    msg.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/></svg><span>KPI card — no chart to render</span>';
+    el.parentElement.replaceChildren(msg);
+    return;
+  }
+  if(CHS[canvasId])CHS[canvasId].destroy();
+  CHS[canvasId]=new Chart(el,cfg);
+}
+
+/* ── slot mapping: button data-cid → bundle → canvas ────── */
+const SLOT_MAP={
+  hc0:{title:'ht0',type:'hy0',bundle:(BUNDLES.hero||[])[0]},
+  hc1:{title:'ht1',type:'hy1',bundle:(BUNDLES.hero||[])[1]},
+  sc0:{title:'st0',type:'sy0',bundle:(BUNDLES.secondary||[])[0]},
+  sc1:{title:'st1',type:'sy1',bundle:(BUNDLES.secondary||[])[1]},
+};
+
+function mountSlot(cid){
+  const s=SLOT_MAP[cid];
+  if(!s||!s.bundle)return;
+  const tEl=document.getElementById(s.title);
+  const yEl=document.getElementById(s.type);
+  if(tEl)tEl.textContent=s.bundle.title||tEl.textContent;
+  if(yEl)yEl.textContent=(s.bundle.type||'').replaceAll('_',' ');
+  renderChart(cid,s.bundle,false);
+}
+
+/* ── extra mini charts ───────────────────────────────────── */
+function mountExtras(items){
+  const host=document.getElementById('pb-extras');
+  if(!host)return;
+  if(!items||!items.length){
+    host.innerHTML='<div class="pb-empty" style="height:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>No additional charts.</div>';
+    return;
+  }
+  host.innerHTML='<div class="pb-mgrid"></div>';
+  const g=host.querySelector('.pb-mgrid');
+  items.slice(0,4).forEach((b,i)=>{
+    const mc=document.createElement('div');mc.className='pb-mc';
+    mc.innerHTML=`<div class="pb-mc-title">${b.title||'Chart'}</div><div class="pb-mc-cw"><canvas id="mx${i}"></canvas></div>`;
+    g.appendChild(mc);
+    setTimeout(()=>{
+      const cfg=mkCfg(b,true);
+      if(cfg){if(CHS['mx'+i])CHS['mx'+i].destroy();CHS['mx'+i]=new Chart(mc.querySelector('canvas'),cfg);}
+    },0);
+  });
+}
+
+/* ── data table ──────────────────────────────────────────── */
+let filtRows=[...ALL_ROWS],sortCI=-1,sortDir=1;
+
+function buildThead(){
+  const tr=document.getElementById('pb-thead');
+  if(!tr)return;
+  // Add computed col headers
+  COMP.forEach((col,i)=>{
+    const th=document.createElement('th');
+    th.className='computed';
+    th.dataset.ci=BASE_COLS.length+i;
+    th.textContent=col;
+    tr.appendChild(th);
+  });
+  // Attach sort handlers to ALL headers
+  tr.querySelectorAll('th').forEach(th=>{
+    th.addEventListener('click',()=>{
+      const ci=parseInt(th.dataset.ci);
+      if(sortCI===ci)sortDir*=-1;else{sortCI=ci;sortDir=1;}
+      tr.querySelectorAll('th').forEach(h=>{h.classList.remove('sa','sd');});
+      th.classList.add(sortDir===1?'sa':'sd');
+      doSort();
+    });
+  });
+}
+
+function renderTbl(rows){
+  const tb=document.getElementById('pb-tbody');
+  const rc=document.getElementById('pb-rcnt');
+  if(!tb)return;
+  if(rc)rc.textContent=rows.length;
+  if(!rows.length){tb.innerHTML='<tr><td colspan="999" class="pb-norows">No matching rows found.</td></tr>';return;}
+  const f=document.createDocumentFragment();
+  rows.forEach(row=>{
+    const tr=document.createElement('tr');
+    ALL_COLS.forEach(col=>{
+      const td=document.createElement('td');
+      if(COMP.includes(col))td.className='computed';
+      td.textContent=row[col]??'';
+      tr.appendChild(td);
+    });
+    f.appendChild(tr);
+  });
+  tb.replaceChildren(f);
+}
+
+function doSort(){
+  const col=ALL_COLS[sortCI];
+  const s=[...filtRows].sort((a,b)=>{
+    const av=a[col]??'',bv=b[col]??'';
+    const an=parseFloat(av),bn=parseFloat(bv);
+    if(!isNaN(an)&&!isNaN(bn))return(an-bn)*sortDir;
+    return String(av).localeCompare(String(bv))*sortDir;
+  });
+  renderTbl(s);
+}
+
+document.getElementById('pb-search')?.addEventListener('input',e=>{
+  const q=e.target.value.trim().toLowerCase();
+  filtRows=q?ALL_ROWS.filter(r=>ALL_COLS.some(c=>String(r[c]||'').toLowerCase().includes(q))):[...ALL_ROWS];
+  if(sortCI>=0)doSort();else renderTbl(filtRows);
+});
+
+/* ── tabs ────────────────────────────────────────────────── */
+/* Track which page charts have already been rendered */
+const rendered=new Set();
+function activatePage(key){
+  document.querySelectorAll('.pb-page').forEach(p=>p.classList.remove('active'));
+  const dataPage=document.getElementById('page-data');
+  dataPage.style.display='none';
+  if(key==='data'){
+    dataPage.style.display='flex';
+    dataPage.style.flexDirection='column';
+    dataPage.style.height=(document.getElementById('pb-canvas').clientHeight)+'px';
+  } else {
+    const pg=document.getElementById('page-'+key);
+    if(pg){
+      pg.classList.add('active');
+      // Lazy-render charts for this page
+      if(!rendered.has(key)){
+        rendered.add(key);
+        setTimeout(()=>{
+          if(key==='overview'){
+            mountSlot('hc0');
+            mountSlot('hc1');
+          } else if(key==='analysis'){
+            mountSlot('sc0');
+            mountSlot('sc1');
+            mountExtras(BUNDLES.detail||[]);
+          }
+          setTimeout(()=>Object.values(CHS).forEach(c=>c?.resize()),60);
+        },20);
+      }
+    }
+  }
+  document.getElementById('pb-canvas').scrollTop=0;
+  setTimeout(()=>Object.values(CHS).forEach(c=>c?.resize()),80);
+}
+
+document.querySelectorAll('.pb-tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.pb-tab').forEach(t=>t.classList.remove('active'));
+    tab.classList.add('active');
+    activatePage(tab.dataset.page);
+  });
+});
+
+/* ── fullscreen overlay ──────────────────────────────────── */
+const overlay=document.getElementById('pb-fs-overlay');
+const fsInner=document.getElementById('pb-fs-inner');
+let fsOrigParent=null,fsOrigCard=null,fsChartId=null;
+
+function positionOverlay(){
+  const top=document.querySelector('.pb-top').getBoundingClientRect().height
+           +document.querySelector('.pb-filters').getBoundingClientRect().height;
+  const bot=document.querySelector('.pb-tabs').getBoundingClientRect().height;
+  overlay.style.top=top+'px';
+  overlay.style.bottom=bot+'px';
+}
+
+document.querySelectorAll('.pb-xbtn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const cid=btn.dataset.cid;
+    const card=btn.closest('.pb-card');
+    if(!card)return;
+    fsOrigParent=card.parentElement;
+    fsOrigCard=card;
+    fsChartId=cid;
+    positionOverlay();
+    fsInner.innerHTML='';
+    fsInner.appendChild(card);
+    overlay.classList.add('open');
+    // Destroy old chart, re-render at full size
+    if(CHS[cid])CHS[cid].destroy();
+    setTimeout(()=>{
+      if(cid==='extras-card'){
+        mountExtras(BUNDLES.detail||[]);
+      } else {
+        const s=SLOT_MAP[cid];
+        if(s&&s.bundle)renderChart(cid,s.bundle,false);
+      }
+      setTimeout(()=>Object.values(CHS).forEach(c=>c?.resize()),80);
+    },30);
+  });
+});
+
+document.getElementById('pb-fs-close').addEventListener('click',()=>{
+  if(fsOrigParent&&fsOrigCard){
+    fsOrigParent.appendChild(fsOrigCard);
+    overlay.classList.remove('open');
+    fsInner.innerHTML='';
+    // Re-render chart back in normal position
+    if(fsChartId&&fsChartId!=='extras-card'){
+      const s=SLOT_MAP[fsChartId];
+      if(s&&s.bundle)setTimeout(()=>{renderChart(fsChartId,s.bundle,false);setTimeout(()=>Object.values(CHS).forEach(c=>c?.resize()),60);},30);
+    }
+  }
+});
+
+window.addEventListener('resize',()=>{
+  if(overlay.classList.contains('open'))positionOverlay();
+  Object.values(CHS).forEach(c=>c?.resize());
+});
+
+/* ── reset filters ───────────────────────────────────────── */
+document.getElementById('pb-reset')?.addEventListener('click',()=>{
+  document.querySelectorAll('.pb-fsel').forEach(s=>s.selectedIndex=0);
+});
+
+/* ── BOOT ────────────────────────────────────────────────── */
+buildThead();
+filtRows=[...ALL_ROWS];
+renderTbl(filtRows);
+// Render overview charts on load
+rendered.add('overview');
+setTimeout(()=>{
+  mountSlot('hc0');
+  mountSlot('hc1');
+  setTimeout(()=>Object.values(CHS).forEach(c=>c?.resize()),80);
+},50);
+
+// Set up data page height
+const dataPg=document.getElementById('page-data');
+dataPg.style.display='flex';
+dataPg.style.flexDirection='column';
+dataPg.style.height=document.getElementById('pb-canvas').clientHeight+'px';
+dataPg.style.display='none';
+
+})();
+</script>
+{% endblock %}

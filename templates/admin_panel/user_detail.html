@@ -1,0 +1,72 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ target_user.email }} — Admin{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div><a href="{% url 'core:admin_users' %}" class="text-slate-500 hover:text-slate-300 text-xs transition-colors">← Users</a><h1 class="text-2xl font-bold text-white mt-1">{{ target_user.email }}</h1></div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- User info + actions -->
+    <div class="space-y-4">
+      <div class="glass rounded-2xl p-5">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">{{ target_user.email|first|upper }}</div>
+          <div><p class="text-white font-semibold">{{ target_user.get_full_name|default:target_user.email }}</p>
+            <p class="text-slate-500 text-xs">Joined {{ target_user.created_at|date:"M d, Y" }}</p></div>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between"><span class="text-slate-500">Email verified</span><span class="{% if target_user.is_email_verified %}text-green-400{% else %}text-amber-400{% endif %}">{% if target_user.is_email_verified %}Yes{% else %}No{% endif %}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Staff</span><span class="text-slate-300">{{ target_user.is_staff|yesno:"Yes,No" }}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Plan</span>
+            <span>{% if sub and sub.is_active %}<span class="badge-pro">PRO</span>{% else %}<span class="badge-free">FREE</span>{% endif %}</span></div>
+          {% if sub and sub.is_active %}<div class="flex justify-between"><span class="text-slate-500">Renews</span><span class="text-slate-300">{{ sub.current_period_end|date:"M d, Y"|default:"—" }}</span></div>{% endif %}
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="glass rounded-2xl p-5 space-y-3">
+        <p class="text-white font-semibold text-sm">Admin Actions</p>
+        <form method="post" action="{% url 'core:admin_grant_pro' target_user.id %}">{% csrf_token %}
+          {% if sub and sub.is_active %}
+          <input type="hidden" name="action" value="revoke">
+          <button type="submit" class="btn-secondary w-full justify-center text-xs py-2 text-amber-400" onclick="return confirm('Revoke Pro?')">Revoke Pro Access</button>
+          {% else %}
+          <input type="hidden" name="action" value="grant">
+          <button type="submit" class="btn-primary w-full justify-center text-xs py-2">Grant Pro (30 days)</button>
+          {% endif %}
+        </form>
+        <form method="post" action="{% url 'core:admin_toggle_staff' target_user.id %}">{% csrf_token %}
+          <button type="submit" class="btn-secondary w-full justify-center text-xs py-2 {% if target_user.is_staff %}text-amber-400{% endif %}">
+            {{ target_user.is_staff|yesno:"Revoke Staff,Grant Staff Access" }}
+          </button>
+        </form>
+        <form method="post" action="{% url 'core:admin_delete_user' target_user.id %}" onsubmit="return confirm('Permanently delete {{ target_user.email }} and all their data?')">{% csrf_token %}
+          <button type="submit" class="w-full py-2 px-4 rounded-xl text-xs text-red-400 border border-red-900/40 hover:bg-red-900/20 transition-all">Delete User &amp; Data</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Uploads + activity -->
+    <div class="lg:col-span-2 space-y-4">
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-violet-900/20"><p class="text-white font-semibold">Recent Uploads ({{ uploads|length }})</p></div>
+        <div class="divide-y divide-slate-800/40 max-h-64 overflow-y-auto">
+          {% for u in uploads %}<div class="px-5 py-3 flex items-center gap-3"><div class="flex-1 min-w-0"><p class="text-white text-sm truncate">{{ u.original_name }}</p><p class="text-slate-500 text-xs">{{ u.row_count }} rows &middot; {{ u.status }} &middot; {{ u.created_at|timesince }} ago</p></div><a href="{% url 'analyser:result' u.id %}" class="text-slate-600 hover:text-violet-300 text-xs">view →</a></div>
+          {% empty %}<div class="px-5 py-6 text-center text-slate-500 text-sm">No uploads</div>{% endfor %}
+        </div>
+      </div>
+      <div class="glass rounded-2xl overflow-hidden">
+        <div class="px-5 py-4 border-b border-violet-900/20"><p class="text-white font-semibold">Activity Log</p></div>
+        <div class="divide-y divide-slate-800/40 max-h-64 overflow-y-auto">
+          {% for ev in events %}<div class="px-5 py-2.5 flex items-center gap-3">
+            <span class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 shrink-0">{{ ev.get_action_display }}</span>
+            <p class="text-slate-500 text-xs truncate flex-1">{{ ev.resource|default:"—" }}</p>
+            <p class="text-slate-600 text-xs shrink-0">{{ ev.timestamp|timesince }} ago</p>
+          </div>{% empty %}<div class="px-5 py-6 text-center text-slate-500 text-sm">No activity</div>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

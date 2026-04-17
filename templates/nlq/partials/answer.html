@@ -1,0 +1,94 @@
+{% load datalens_extras %}
+<div style="border-top:1px solid rgba(124,58,237,0.12);padding-top:16px;margin-top:8px;">
+  <!-- Question bubble -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;justify-content:flex-end;">
+    <div style="background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.2);border-radius:14px 14px 2px 14px;padding:10px 14px;max-width:80%;">
+      <p style="color:#e2e8f0;font-size:13px;margin:0;">{{ question }}</p>
+    </div>
+    <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#3b82f6);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;">You</div>
+  </div>
+
+  <!-- Answer bubble -->
+  <div style="display:flex;gap:10px;margin-bottom:16px;">
+    <div style="width:30px;height:30px;border-radius:50%;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;">🤖</div>
+    <div style="flex:1;min-width:0;">
+      {% if result.error %}
+        <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 14px;">
+          <p style="color:#f87171;font-size:13px;margin:0;">{{ result.error }}</p>
+        </div>
+      {% else %}
+        <!-- Main answer -->
+        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:2px 14px 14px 14px;padding:12px 16px;margin-bottom:{% if result.chart_data %}10px{% else %}0{% endif %};">
+          <p style="color:#e2e8f0;font-size:13px;line-height:1.6;margin:0;">{{ result.answer }}</p>
+          {% if result.result_value is not None and result.result_value != "" %}
+          <p style="color:#a78bfa;font-size:11px;margin:6px 0 0;font-family:monospace;">→ {{ result.result_value }}</p>
+          {% endif %}
+        </div>
+
+        <!-- Chart if returned -->
+        {% if result.chart_data %}
+        <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:12px;">
+          {% with cd=result.chart_data %}
+          {% if cd.chart_type == 'number' or cd.type == 'number' %}
+            <div style="text-align:center;padding:12px 0;">
+              <p style="font-size:2.8rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;">{{ cd.value|default:result.result_value }}</p>
+              <p style="color:#64748b;font-size:12px;margin:4px 0 0;">{{ cd.title|default:"Result" }}</p>
+            </div>
+          {% elif cd.labels and cd.datasets %}
+            <p style="color:#94a3b8;font-size:11px;margin:0 0 8px;">{{ cd.title|default:"" }}</p>
+            <div style="position:relative;height:200px;">
+              <canvas id="nlq-chart-{{ forloop.counter|default:"1" }}-{{ result.tokens_used }}"></canvas>
+            </div>
+            <script>
+            (function(){
+              var raw={{ cd|jsonify|safe }};
+              var t=raw.chart_type||'bar',isH=t==='horizontal_bar';
+              var jsT={area:'line',histogram:'bar',horizontal_bar:'bar'}[t]||t;
+              var el=document.querySelector('canvas[id^="nlq-chart-"]');
+              if(!el)return;
+              el.id='nlq-chart-'+Date.now();
+              Chart.defaults.color='#94a3b8';
+              new Chart(el,{
+                type:isH?'bar':jsT,
+                data:{labels:raw.labels,datasets:raw.datasets||[]},
+                options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,
+                  animation:{duration:300},
+                  plugins:{legend:{display:(raw.datasets||[]).length>1,labels:{color:'#94a3b8',font:{size:9},boxWidth:7}}},
+                  scales:jsT!=='pie'&&jsT!=='doughnut'?{
+                    x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:9}}},
+                    y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:9}}}
+                  }:undefined}
+              });
+            })();
+            </script>
+          {% elif cd.table %}
+            <!-- Tabular result -->
+            <div style="overflow-x:auto;max-height:200px;overflow-y:auto;">
+              <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:monospace;">
+                <thead><tr style="border-bottom:1px solid rgba(124,58,237,.2);">
+                  {% for col in cd.columns %}<th style="padding:5px 8px;text-align:left;color:#64748b;white-space:nowrap;">{{ col }}</th>{% endfor %}
+                </tr></thead>
+                <tbody>
+                  {% for row in cd.rows %}
+                  <tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+                    {% for cell in row %}<td style="padding:4px 8px;color:#94a3b8;">{{ cell }}</td>{% endfor %}
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+          {% endwith %}
+        </div>
+        {% endif %}
+
+        {% if result.code %}
+        <details style="margin-top:8px;">
+          <summary style="color:#334155;font-size:10px;cursor:pointer;">Show generated code</summary>
+          <pre style="background:rgba(0,0,0,.3);border-radius:8px;padding:10px;font-size:10px;color:#64748b;margin:4px 0 0;overflow-x:auto;white-space:pre-wrap;">{{ result.code }}</pre>
+        </details>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+</div>

@@ -1,0 +1,104 @@
+{% load analyser_safety %}
+<div id="studio-inspector-overlay" class="fixed inset-0 bg-black/40 hidden z-40"></div>
+<aside id="studio-inspector" class="fixed top-0 right-0 h-full w-full max-w-md bg-[#090714] border-l border-violet-500/20 shadow-2xl translate-x-full transition-transform duration-300 z-50 flex flex-col">
+  <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+    <div>
+      <h3 class="text-white font-semibold">Chart inspector</h3>
+      <p class="text-xs text-slate-500" id="inspector-chart-id">Select a chart from the studio list</p>
+    </div>
+    <button type="button" id="close-inspector" class="text-slate-400 hover:text-white">✕</button>
+  </div>
+  <div class="p-5 space-y-4 overflow-y-auto">
+    <div>
+      <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Title</label>
+      <input id="inspector-title" type="text" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+    </div>
+    <div class="grid grid-cols-3 gap-3">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Chart type</label>
+        <select id="inspector-chart-type" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in chart_type_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Aggregation</label>
+        <select id="inspector-aggregation" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in agg_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Palette</label>
+        <select id="inspector-color" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in color_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">X axis</label>
+        <select id="inspector-x-axis" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="">None</option>
+          {% for item in dimension_candidates %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+          {% for item in numeric_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Y axis</label>
+        <select id="inspector-y-axis" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="">None</option>
+          {% for item in numeric_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+          {% for item in category_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Size</label>
+        <select id="inspector-size" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in size_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Rolling window</label>
+        <input id="inspector-rolling-window" type="number" min="1" max="24" value="3" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Top N</label>
+        <input id="inspector-top-n" type="number" min="1" max="50" value="10" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Comparison</label>
+        <select id="inspector-comparison" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in comparison_modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Target column</label>
+        <select id="inspector-target-column" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="">None</option>
+          {% for item in target_candidates %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Benchmark column</label>
+        <select id="inspector-benchmark-column" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="">None</option>
+          {% for item in numeric_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+    </div>
+    <label class="flex items-center gap-2 text-sm text-slate-300">
+      <input id="inspector-annotations" type="checkbox" class="rounded border-white/20 bg-white/5">
+      Show annotations
+    </label>
+    <div class="flex gap-2 pt-2">
+      <button type="button" id="save-inspector" class="btn-primary py-2 px-4 text-sm">Save chart</button>
+      <button type="button" id="cancel-inspector" class="btn-secondary py-2 px-4 text-sm">Close</button>
+    </div>
+    <p class="text-xs text-slate-500" id="inspector-status">Pick a chart card to edit its settings.</p>
+  </div>
+</aside>

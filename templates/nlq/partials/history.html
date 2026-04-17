@@ -1,0 +1,21 @@
+{% load datalens_extras %}
+{% if queries %}
+<div style="border-top:1px solid rgba(124,58,237,.1);padding-top:14px;margin-top:8px;">
+  <p style="color:#475569;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px;">Previous questions</p>
+  <div style="display:flex;flex-direction:column;gap:8px;">
+  {% for q in queries %}
+  <div style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px;cursor:pointer;"
+       onclick="document.getElementById('nlq-input').value='{{ q.question|escapejs }}'"
+       onmouseover="this.style.borderColor='rgba(124,58,237,.25)'" onmouseout="this.style.borderColor='rgba(255,255,255,.06)'">
+    <p style="color:#94a3b8;font-size:12px;margin:0 0 3px;">{{ q.question|truncatechars:80 }}</p>
+    {% if q.answer %}
+    <p style="color:#475569;font-size:11px;margin:0 0 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">→ {{ q.answer|truncatechars:80 }}</p>
+    {% endif %}
+    <p style="color:#334155;font-size:10px;margin:0;">{{ q.created_at|timesince }} ago · {{ q.tokens_used }} tokens</p>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+{% else %}
+<p style="color:#334155;font-size:12px;text-align:center;padding:12px 0;">No previous questions yet.</p>
+{% endif %}

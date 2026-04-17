@@ -1,0 +1,41 @@
+{% extends 'app_base.html' %}
+{% block title %}Computed Columns — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div><div class="text-xs text-slate-500 mb-1"><a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">← {{ upload.original_name }}</a></div><h1 class="text-2xl font-bold text-white">Computed Columns</h1></div>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="glass rounded-2xl p-6">
+      <h2 class="text-white font-semibold mb-4">Add Formula Column</h2>
+      <form method="post" action="{% url 'formulas:save' upload.id %}" class="space-y-4">{% csrf_token %}
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Column Name</label>
+          <input type="text" name="col_name" placeholder="profit_margin" required class="input-field text-sm font-mono"></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Expression</label>
+          <textarea name="expression" id="expr" rows="3" placeholder="revenue / qty" class="input-field text-sm font-mono" required></textarea>
+          <p class="text-slate-600 text-xs mt-1">Click column names below to insert. Use abs, round, sqrt, log, np.where(cond,a,b)</p></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Description</label>
+          <input type="text" name="description" placeholder="Optional" class="input-field text-sm"></div>
+        <div class="flex gap-2">
+          <button type="button" class="btn-secondary text-xs py-2 px-4 flex-1"
+            hx-post="{% url 'formulas:preview' upload.id %}" hx-include="[name=expression]"
+            hx-target="#prev" hx-vals='{"csrfmiddlewaretoken":"{{ csrf_token }}"}'>Preview</button>
+          <button type="submit" class="btn-primary text-sm py-2.5 px-5 flex-1">Add Column</button>
+        </div>
+        <div id="prev"></div>
+      </form>
+    </div>
+    <div>
+      <h2 class="text-white font-semibold mb-3">Available Columns</h2>
+      <div class="glass rounded-xl p-4 mb-4 max-h-44 overflow-y-auto flex flex-wrap gap-1.5">
+        {% for col in columns %}<button type="button" onclick="document.getElementById('expr').value+='{{ col }}'" class="text-xs px-2.5 py-1 glass-sm rounded-lg text-slate-300 hover:text-violet-300 border border-violet-900/20 hover:border-violet-600/30 transition-all font-mono">{{ col }}</button>{% endfor %}
+      </div>
+      {% if computed %}
+      <h2 class="text-white font-semibold mb-3">Existing ({{ computed|length }})</h2>
+      <div class="space-y-2">{% for cc in computed %}<div class="glass rounded-xl p-3 flex items-center gap-3"><div class="flex-1 min-w-0"><p class="text-white text-sm font-mono">{{ cc.name }}</p><p class="text-slate-500 text-xs font-mono truncate">= {{ cc.expression }}</p></div>
+        <form method="post" action="{% url 'formulas:delete' upload.id cc.id %}">{% csrf_token %}<button class="text-slate-600 hover:text-red-400 p-1.5 transition-colors">✕</button></form></div>{% endfor %}
+      </div>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

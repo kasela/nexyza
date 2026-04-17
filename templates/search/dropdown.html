@@ -1,0 +1,20 @@
+{% if results %}
+<div class="py-1">
+  {% for r in results %}
+  <a href="{{ r.url }}" class="flex items-center gap-3 px-3 py-2.5 hover:bg-violet-900/20 transition-colors">
+    <span class="text-base shrink-0">{{ r.icon }}</span>
+    <div class="flex-1 min-w-0">
+      <p class="text-white text-xs font-medium truncate">{{ r.title }}</p>
+      <p class="text-slate-500 text-xs truncate">{{ r.subtitle }}</p>
+    </div>
+  </a>
+  {% endfor %}
+  <div class="border-t border-violet-900/20 mt-1 pt-1">
+    <a href="/search/?q={{ query|urlencode }}" class="flex items-center justify-center gap-1.5 px-3 py-2 text-violet-400 hover:text-violet-300 text-xs transition-colors">
+      View all results for "{{ query }}" →
+    </a>
+  </div>
+</div>
+{% elif query %}
+<div class="px-4 py-5 text-center text-slate-500 text-xs">No results for "{{ query }}"</div>
+{% endif %}

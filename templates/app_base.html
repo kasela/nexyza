@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Nexyza{% endblock %}</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/static/img/favicon.ico">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+  <meta name="theme-color" content="{% if request.branding %}{{ request.branding.primary_color }}{% else %}#7c3aed{% endif %}">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={darkMode:'class',theme:{extend:{colors:{brand:{400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed',700:'#6d28d9'}},fontFamily:{sans:['\'DM Sans\'','system-ui']}}}}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  {% if request.branding %}<style>{{ request.branding.css_variables }}{{ request.branding.custom_css }}</style>{% endif %}
+  <style>
+    body{background:#0d0b17;color:#e2e0f0;font-family:'DM Sans',system-ui,sans-serif;}
+    .glass{background:rgba(30,27,46,.7);backdrop-filter:blur(12px);border:1px solid rgba(167,139,250,.12);}
+    .glass-sm{background:rgba(19,17,31,.8);backdrop-filter:blur(8px);border:1px solid rgba(167,139,250,.08);}
+    .glow{box-shadow:0 0 30px rgba(139,92,246,.15);}
+    .gradient-text{background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+    .input-field{width:100%;background:rgba(19,17,31,.8);border:1px solid rgba(167,139,250,.2);border-radius:.75rem;padding:.75rem 1rem;color:#e2e0f0;font-size:.875rem;transition:border-color .2s;outline:none;}
+    .input-field:focus{border-color:rgba(139,92,246,.6);box-shadow:0 0 0 3px rgba(139,92,246,.1);}
+    .btn-primary{display:inline-flex;align-items:center;gap:.5rem;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;padding:.6rem 1.4rem;border-radius:.75rem;font-weight:600;font-size:.875rem;transition:all .2s;box-shadow:0 4px 15px rgba(124,58,237,.3);}
+    .btn-primary:hover{box-shadow:0 4px 20px rgba(124,58,237,.5);transform:translateY(-1px);}
+    .btn-secondary{display:inline-flex;align-items:center;gap:.5rem;background:rgba(30,27,46,.8);color:#c4b5fd;padding:.6rem 1.4rem;border-radius:.75rem;font-weight:500;font-size:.875rem;border:1px solid rgba(167,139,250,.25);transition:all .2s;}
+    .btn-secondary:hover{background:rgba(40,35,60,.9);border-color:rgba(167,139,250,.5);}
+    .badge-pro{background:linear-gradient(135deg,rgba(124,58,237,.3),rgba(59,130,246,.2));color:#c4b5fd;padding:2px 10px;border-radius:999px;font-size:.7rem;font-weight:600;border:1px solid rgba(139,92,246,.4);}
+    .badge-free{background:rgba(100,116,139,.2);color:#94a3b8;padding:2px 10px;border-radius:999px;font-size:.7rem;font-weight:600;border:1px solid rgba(100,116,139,.3);}
+    .htmx-indicator{display:none;}.htmx-request .htmx-indicator{display:inline-flex;}.htmx-request.htmx-indicator{display:inline-flex;}
+    ::-webkit-scrollbar{width:4px;height:4px;}::-webkit-scrollbar-track{background:#13111f;}::-webkit-scrollbar-thumb{background:#3d3460;border-radius:2px;}
+    /* Sidebar */
+    .sidebar{width:240px;flex-shrink:0;} @media(max-width:768px){.sidebar-link{padding:.75rem .875rem;font-size:.85rem;}}.sidebar-link{display:flex;align-items:center;gap:.75rem;padding:.6rem .875rem;border-radius:.625rem;color:#64748b;font-size:.8rem;font-weight:500;transition:all .15s;}.sidebar-link:hover{background:rgba(124,58,237,.12);color:#c4b5fd;}.sidebar-link.active{background:rgba(124,58,237,.2);color:#a78bfa;}.sidebar-section{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#374151;padding:.75rem .875rem .25rem;}
+    .prose-invert h1,.prose-invert h2,.prose-invert h3{color:#e2e0f0!important;}.prose-invert p,.prose-invert li{color:#94a3b8!important;}.prose-invert strong{color:#c4b5fd!important;}.prose-invert code{color:#a78bfa!important;background:rgba(124,58,237,.15)!important;padding:1px 6px;border-radius:4px;}
+    @media(max-width:768px){.sidebar{display:none;}.sidebar.open{display:flex;position:fixed;inset:0;z-index:40;flex-direction:column;width:240px;background:#0d0b17;}}
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen flex flex-col">
+
+<!-- Top bar (app) -->
+<header class="sticky top-0 z-30 h-14 flex items-center px-4 gap-3 border-b border-violet-900/20" style="background:rgba(13,11,23,.97);backdrop-filter:blur(20px)">
+  <!-- Mobile menu toggle -->
+  <button id="mob-menu-btn" class="md:hidden text-slate-500 hover:text-slate-300 p-1" onclick="toggleMobileSidebar()">
+    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"/></svg>
+  </button>
+
+  <!-- Logo -->
+  <a href="/dashboard/" class="flex items-center gap-2 mr-4">
+    <div class="w-7 h-7 rounded-md flex items-center justify-center shrink-0" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">
+      <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+    </div>
+    <span class="font-bold text-white text-sm hidden sm:block">{% if request.branding %}{{ request.branding.app_name }}{% else %}Nexyza{% endif %}</span>
+  </a>
+
+  <!-- Live search -->
+  <div class="flex-1 max-w-sm hidden lg:block relative" id="search-wrap">
+    <input type="text" id="nav-search" placeholder="Search files, columns, charts…"
+           class="w-full py-1.5 px-3 rounded-lg text-xs"
+           style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);color:#94a3b8;outline:none;transition:border-color .2s;"
+           hx-get="/search/"
+           hx-trigger="keyup changed delay:300ms"
+           hx-target="#search-dropdown"
+           hx-vals='js:{"q": document.getElementById("nav-search").value, "fmt": "json"}'
+           onfocus="document.getElementById('search-dropdown').classList.remove('hidden');this.style.borderColor='rgba(124,58,237,.5)'"
+           onblur="setTimeout(()=>document.getElementById('search-dropdown').classList.add('hidden'),200);this.style.borderColor='rgba(255,255,255,.08)'">
+    <div id="search-dropdown" class="hidden absolute top-full mt-1 left-0 right-0 glass rounded-xl shadow-xl z-50 overflow-hidden max-h-80 overflow-y-auto border border-violet-900/30">
+      <!-- filled by HTMX / JS -->
+    </div>
+  </div>
+
+  <div class="ml-auto flex items-center gap-3">
+    <!-- Notifications bell -->
+    <a href="/notify/" class="relative text-slate-500 hover:text-slate-300 p-1.5 transition-colors">
+      <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+    </a>
+
+    <!-- Upload quick button -->
+    <a href="/workspace/" class="btn-primary text-xs py-1.5 px-3.5 hidden sm:inline-flex">
+      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/></svg>
+      New
+    </a>
+
+    <!-- User avatar dropdown -->
+    <div class="relative" id="user-menu-wrap">
+      <button onclick="document.getElementById('user-dropdown').classList.toggle('hidden')" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">
+          {{ user.email|first|upper }}
+        </div>
+        <span class="text-slate-300 text-xs hidden sm:block max-w-[120px] truncate">{{ user.email }}</span>
+        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="#64748b" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+      </button>
+      <div id="user-dropdown" class="hidden absolute right-0 top-full mt-2 w-52 glass rounded-xl py-1.5 shadow-xl z-50 border border-violet-900/30">
+        <div class="px-3 py-2 border-b border-violet-900/20">
+          <p class="text-white text-xs font-semibold truncate">{{ user.full_name|default:user.email }}</p>
+          <p class="text-slate-500 text-xs truncate">{{ user.email }}</p>
+          {% if is_pro %}<span class="badge-pro mt-1 inline-block">PRO</span>{% else %}<span class="badge-free mt-1 inline-block">FREE</span>{% endif %}
+        </div>
+        <a href="/accounts/settings/" class="flex items-center gap-2.5 px-3 py-2 text-slate-400 hover:text-white hover:bg-white/5 text-xs transition-colors">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Account Settings
+        </a>
+        <a href="/billing/pricing/" class="flex items-center gap-2.5 px-3 py-2 text-slate-400 hover:text-white hover:bg-white/5 text-xs transition-colors">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z"/></svg>
+          Billing & Plan
+        </a>
+        <a href="/audit/"  class="flex items-center gap-2.5 px-3 py-2 text-slate-400 hover:text-white hover:bg-white/5 text-xs transition-colors">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z"/></svg>
+          Activity Log
+        </a>
+        <div class="border-t border-violet-900/20 mt-1 pt-1">
+          <a href="/accounts/logout/" class="flex items-center gap-2.5 px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-900/10 text-xs transition-colors">
+            <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
+            Sign out
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- App layout: sidebar + main -->
+<div class="flex flex-1 min-h-0">
+
+  <!-- Sidebar -->
+  <!-- Mobile sidebar backdrop -->
+<div id="sidebar-backdrop"
+     style="display:none;position:fixed;inset:0;z-index:39;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);"
+     onclick="closeMobileSidebar()"></div>
+
+<aside id="sidebar" class="sidebar h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto flex flex-col border-r border-violet-900/15 py-3" style="background:#0a0816">
+
+    <div class="px-2 space-y-0.5">
+      <!-- Close button — mobile only -->
+      <div class="md:hidden flex justify-between items-center px-3 pb-3 border-b border-violet-900/20 mb-1">
+        <span class="text-slate-400 text-xs font-semibold uppercase tracking-wider">Menu</span>
+        <button onclick="closeMobileSidebar()" class="text-slate-500 hover:text-slate-300 p-1.5 rounded-lg hover:bg-white/5">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>
+      </div>
+      <p class="sidebar-section">Main</p>
+      <a href="/dashboard/"  class="sidebar-link {% block nav_dashboard %}{% endblock %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+        Dashboard
+      </a>
+      <a href="/search/" class="sidebar-link {% if '/search' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>
+        Search
+      </a>
+      <a href="/workspace/" class="sidebar-link {% block nav_analyse %}{% endblock %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/></svg>
+        Upload & Analyse
+      </a>
+      <a href="/join/" class="sidebar-link {% if '/join' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 16.875h3.375m0 0h3.375m-3.375 0V13.5m0 3.375v3.375M6 10.5h2.25a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H6A2.25 2.25 0 003.75 6v2.25A2.25 2.25 0 006 10.5zm0 9.75h2.25A2.25 2.25 0 0010.5 18v-2.25a2.25 2.25 0 00-2.25-2.25H6a2.25 2.25 0 00-2.25 2.25V18A2.25 2.25 0 006 20.25zm9.75-9.75H18a2.25 2.25 0 002.25-2.25V6A2.25 2.25 0 0018 3.75h-2.25A2.25 2.25 0 0013.5 6v2.25a2.25 2.25 0 002.25 2.25z"/></svg>
+        Join Files
+      </a>
+      <a href="/workspace/compare/" class="sidebar-link {% if 'compare' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/></svg>
+        Compare Files
+      </a>
+
+      <p class="sidebar-section mt-2">Tools</p>
+      <a href="/widgets/" class="sidebar-link {% if 'widgets' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"/></svg>
+        Widgets
+      </a>
+      <a href="/catalog/" class="sidebar-link {% if 'catalog' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"/></svg>
+        Data Catalog
+      </a>
+      <a href="/reports/builder/" class="sidebar-link {% if 'reports/builder' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/></svg>
+        Report Builder
+      </a>
+      <a href="/webhooks/" class="sidebar-link {% if 'webhooks' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m13.35-.622l1.757-1.757a4.5 4.5 0 00-6.364-6.364l-4.5 4.5a4.5 4.5 0 001.242 7.244"/></svg>
+        Webhooks
+      </a>
+      <a href="/pipeline/" class="sidebar-link {% if 'pipeline' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 010 1.972l-11.54 6.347a1.125 1.125 0 01-1.667-.986V5.653z"/></svg>
+        Pipelines
+      </a>
+      <a href="/reports/" class="sidebar-link {% if request.path == '/reports/' %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z"/></svg>
+        Reports
+      </a>
+      <a href="/notify/" class="sidebar-link {% if 'notify' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        Notifications
+      </a>
+      <a href="/connectors/" class="sidebar-link {% if 'connectors' in request.path %}active{% endif %}">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
+        Live Connectors
+      </a>
+      <p class="sidebar-section mt-2">Collaborate</p>
+      <a href="/teams/" class="sidebar-link {% if 'teams' in request.path or 'roles' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg>
+        Teams
+      </a>
+      <a href="/api/v1/keys/" class="sidebar-link {% if 'api' in request.path %}active{% endif %}">
+        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z"/></svg>
+        API Keys
+      </a>
+    </div>
+
+    <!-- Bottom: user plan + settings -->
+    <div class="mt-auto px-2 pb-2 space-y-0.5">
+      {% if user.is_staff %}
+      <div class="mb-2">
+        <a href="/admin-panel/" class="sidebar-link" style="background:rgba(245,158,11,.08);color:#fbbf24;border:1px solid rgba(245,158,11,.15);">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Admin Panel
+        </a>
+      </div>
+      {% endif %}
+      <div class="border-t border-violet-900/15 pt-3">
+        {% if not is_pro %}
+        <a href="/billing/pricing/" class="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-xs font-medium transition-all" style="background:linear-gradient(135deg,rgba(124,58,237,.15),rgba(59,130,246,.08));border:1px solid rgba(124,58,237,.2);color:#c4b5fd">
+          <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+          Upgrade to Pro
+        </a>
+        {% endif %}
+        <a href="/settings/branding/" class="sidebar-link {% if 'branding' in request.path %}active{% endif %}">
+        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4.098 19.902a3.75 3.75 0 005.304 0l6.401-6.402M6.75 21A3.75 3.75 0 013 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 003.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008z"/></svg>
+        Branding
+      </a>
+      <a href="/accounts/settings/" class="sidebar-link mt-1">
+          <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          Settings
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content area -->
+  <main class="flex-1 min-w-0 overflow-auto">
+    {% if messages %}
+    <div class="px-6 pt-4">
+      {% for msg in messages %}
+      <div class="mb-2 px-4 py-3 rounded-xl text-sm font-medium {% if msg.tags == 'error' %}bg-red-900/40 border border-red-700/40 text-red-300{% elif msg.tags == 'success' %}bg-green-900/40 border border-green-700/40 text-green-300{% else %}bg-violet-900/30 border border-violet-700/40 text-violet-300{% endif %}">{{ msg }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+
+<script>
+// Close user dropdown on outside click
+document.addEventListener('click', e => {
+  const wrap = document.getElementById('user-menu-wrap');
+  const dd = document.getElementById('user-dropdown');
+  if (wrap && !wrap.contains(e.target)) dd?.classList.add('hidden');
+});
+// Close sidebar on mobile when clicking outside
+document.addEventListener('click', e => {
+  const sb = document.getElementById('sidebar');
+  const btn = document.getElementById('mob-menu-btn');
+  if (sb && sb.classList.contains('open') && !sb.contains(e.target) && !btn?.contains(e.target))
+    sb.classList.remove('open');
+});
+</script>
+{% block extra_scripts %}{% endblock %}
+<script>
+function toggleMobileSidebar(){
+  var s = document.getElementById('sidebar');
+  var b = document.getElementById('sidebar-backdrop');
+  var open = s.classList.toggle('open');
+  b.style.display = open ? 'block' : 'none';
+  document.body.style.overflow = open ? 'hidden' : '';
+}
+function closeMobileSidebar(){
+  var s = document.getElementById('sidebar');
+  var b = document.getElementById('sidebar-backdrop');
+  s.classList.remove('open');
+  b.style.display = 'none';
+  document.body.style.overflow = '';
+}
+// Close sidebar on nav link click (mobile)
+document.addEventListener('DOMContentLoaded', function(){
+  if(window.innerWidth < 768){
+    document.querySelectorAll('.sidebar-link').forEach(function(a){
+      a.addEventListener('click', closeMobileSidebar);
+    });
+  }
+});
+</script>
+</body>
+</html>

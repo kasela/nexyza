@@ -1,0 +1,45 @@
+{% load datalens_extras %}
+{% if report.summary %}
+<div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05));border:1px solid rgba(124,58,237,.2);border-radius:14px;padding:20px 24px;margin-bottom:20px;">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+    <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;">🤖</div>
+    <p style="color:#a78bfa;font-weight:600;font-size:13px;margin:0;">AI Analysis</p>
+  </div>
+  <div style="color:#94a3b8;font-size:13px;line-height:1.7;white-space:pre-line;">{{ report.summary }}</div>
+</div>
+{% endif %}
+
+{% if report.findings %}
+<div style="display:flex;flex-direction:column;gap:8px;">
+{% for f in report.findings %}
+<div style="background:rgba(255,255,255,.03);border:1px solid
+  {% if f.severity == 'high' %}rgba(239,68,68,.25){% elif f.severity == 'medium' %}rgba(245,158,11,.2){% else %}rgba(100,116,139,.2){% endif %};
+  border-radius:12px;padding:14px 16px;display:flex;align-items:flex-start;gap:12px;">
+  <span style="font-size:18px;flex-shrink:0;margin-top:1px;">
+    {% if f.severity == 'high' %}🔴{% elif f.severity == 'medium' %}🟡{% else %}⚪{% endif %}
+  </span>
+  <div style="flex:1;min-width:0;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+      <span style="color:#e2e8f0;font-weight:600;font-size:13px;">{{ f.column }}</span>
+      <span style="font-size:10px;padding:2px 8px;border-radius:999px;font-weight:600;
+        background:{% if f.severity == 'high' %}rgba(239,68,68,.15){% elif f.severity == 'medium' %}rgba(245,158,11,.12){% else %}rgba(100,116,139,.15){% endif %};
+        color:{% if f.severity == 'high' %}#f87171{% elif f.severity == 'medium' %}#fbbf24{% else %}#64748b{% endif %};">
+        {{ f.severity|upper }}
+      </span>
+      <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,.15);color:#a78bfa;">
+        {{ f.type|replace:"_" }}
+      </span>
+    </div>
+    <p style="color:#94a3b8;font-size:13px;margin:0 0 3px;">{{ f.message }}</p>
+    <p style="color:#475569;font-size:11px;margin:0;font-family:monospace;">{{ f.detail }}</p>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% else %}
+<div style="text-align:center;padding:32px;background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.2);border-radius:14px;">
+  <div style="font-size:2.5rem;margin-bottom:8px;">✅</div>
+  <p style="color:#34d399;font-weight:600;margin-bottom:4px;">No anomalies detected</p>
+  <p style="color:#64748b;font-size:13px;">Data quality looks good across all {{ upload.column_count }} columns.</p>
+</div>
+{% endif %}

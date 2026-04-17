@@ -1,0 +1,35 @@
+{% load analyser_safety %}
+<div class="glass rounded-2xl p-4 mb-5" style="border:1px solid rgba(124,58,237,0.15);">
+  <div class="flex flex-col xl:flex-row xl:items-end gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3 flex-1">
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Dimension</label>
+        <select id="studio-dimension" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          <option value="">Choose dimension</option>
+          {% for item in category_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Value</label>
+        <input id="studio-value" type="text" placeholder="Type exact value" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Comparison</label>
+        <select id="studio-comparison" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+          {% for value, label in comparison_modes %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Top N</label>
+        <input id="studio-top-n" type="number" min="1" max="50" value="10" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+      </div>
+      <div>
+        <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Quick action</label>
+        <div class="flex gap-2">
+          <button type="button" id="studio-apply-filter" class="btn-primary py-2 px-4 text-sm">Apply</button>
+          <button type="button" id="studio-clear-filter" class="btn-secondary py-2 px-4 text-sm">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,51 @@
+{% extends 'public_base.html' %}
+{% block title %}Log in — Nexyza{% endblock %}
+{% block content %}
+<div class="min-h-[85vh] flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md">
+    <div class="text-center mb-8">
+      <div class="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">
+        <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+      </div>
+      <h1 class="text-2xl font-bold text-white" style="font-family:'Sora',sans-serif">Get started free</h1>
+      <p class="text-slate-400 text-sm mt-1">Create your free account</p>
+    </div>
+
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:1.25rem;padding:2rem">
+      <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {% for field in form %}
+        <div>
+          <label class="block text-sm font-medium mb-1.5" style="color:#94a3b8">{{ field.label }}</label>
+          <input type="{{ field.field.widget.input_type }}"
+                 name="{{ field.html_name }}"
+                 {% if field.value %}value="{{ field.value }}"{% endif %}
+                 style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:.75rem;padding:.75rem 1rem;color:#e2e0f0;font-size:.875rem;outline:none;transition:border-color .2s;"
+                 placeholder="{{ field.label }}"
+                 onfocus="this.style.borderColor='rgba(124,58,237,.6)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+          {% if field.errors %}<p style="color:#f87171;font-size:.75rem;margin-top:.25rem">{{ field.errors.0 }}</p>{% endif %}
+        </div>
+        {% endfor %}
+
+        {% if form.non_field_errors %}
+        <div style="padding:.75rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);border-radius:.5rem;color:#fca5a5;font-size:.875rem">{{ form.non_field_errors.0 }}</div>
+        {% endif %}
+
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" name="remember" style="accent-color:#7c3aed">
+            <span style="color:#94a3b8;font-size:.875rem">Remember me</span>
+          </label>
+          <a href="{% url 'account_reset_password' %}" style="color:#a78bfa;font-size:.875rem">Forgot password?</a>
+        </div>
+
+        <button type="submit" class="btn-cta w-full justify-center py-3 mt-2">Create Account</button>
+      </form>
+
+      <p style="text-align:center;color:#64748b;font-size:.875rem;margin-top:1.5rem">
+        Already have an account? <a href="{% url 'account_login' %}" style="color:#a78bfa;font-weight:600">Sign in</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

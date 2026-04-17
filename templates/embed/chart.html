@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ chart.title }}</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0b17; color: #e2e0f0; font-family: 'DM Sans', system-ui, sans-serif; padding: 16px; height: 100vh; display: flex; flex-direction: column; }
+  h3 { font-size: 13px; font-weight: 600; color: #e2e0f0; margin-bottom: 10px; }
+  .chart-wrap { flex: 1; position: relative; min-height: 0; }
+  .kpi { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+  .kpi .val { font-size: 2.5rem; font-weight: 700; background: linear-gradient(135deg,#a78bfa,#60a5fa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .kpi .lbl { font-size: 12px; color: #64748b; margin-top: 4px; }
+  .footer { font-size: 10px; color: #374151; text-align: right; margin-top: 6px; }
+  a { color: #7c3aed; text-decoration: none; }
+</style>
+</head>
+<body>
+<h3>{{ chart.title }}</h3>
+
+{% load datalens_extras %}
+{% with d=chart.cached_data %}
+{% if d %}
+  {% if d.kpi %}
+  <div class="kpi">
+    <span class="val">{{ d.value }}</span>
+    <span class="lbl">{{ d.label }}</span>
+  </div>
+  {% elif d.heatmap %}
+  <p style="color:#94a3b8;font-size:12px;text-align:center;padding-top:20px">Correlation Heatmap — view full analysis for details.</p>
+  {% elif d.labels %}
+  <div class="chart-wrap">
+    <canvas id="ec"></canvas>
+  </div>
+  <script>
+  Chart.defaults.color='#94a3b8';
+  const d={{ d|jsonify|safe }};
+  const t=d.chart_type==='area'?'line':d.chart_type||'bar';
+  new Chart(document.getElementById('ec'),{
+    type:t,data:{labels:d.labels,datasets:d.datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      indexAxis:d.chart_type==='horizontal_bar'?'y':'x',
+      plugins:{legend:{display:(d.datasets||[]).length>1,labels:{color:'#94a3b8',font:{size:10},boxWidth:8}}},
+      scales:t!=='pie'&&t!=='doughnut'?{
+        x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10},maxTicksLimit:8}},
+        y:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#64748b',font:{size:10}}}}:undefined}
+  });
+  </script>
+  {% endif %}
+{% else %}
+<p style="color:#64748b;font-size:12px;text-align:center;padding-top:30px">No data available.</p>
+{% endif %}
+{% endwith %}
+
+<div class="footer">Powered by <a href="/" target="_blank">Nexyza</a></div>
+</body>
+</html>

@@ -1,0 +1,233 @@
+{% extends 'app_base.html' %}
+{% load analyser_safety %}
+{% block title %}Chart Builder — {{ upload.original_name|safe_preview }}{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <div class="text-xs text-slate-500 mb-1"><a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">← {{ upload.original_name|safe_preview }}</a></div>
+      <h1 class="text-2xl font-bold text-white">Chart Builder</h1>
+    </div>
+    <a href="{% url 'analyser:result' upload.id %}" class="btn-secondary text-xs py-2 px-4">← Back to Analysis</a>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Controls -->
+    <div class="glass rounded-2xl p-6 space-y-5">
+      <h2 class="text-white font-semibold">Configure Chart</h2>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Chart Type</label>
+        <div class="grid grid-cols-3 gap-2" id="chart-type-btns">
+          {% for ct, label in chart_types %}
+          <button type="button" onclick="selectChartType('{{ ct }}')"
+                  id="ct-{{ ct }}"
+                  class="chart-type-btn px-2 py-2 rounded-lg text-xs font-medium transition-all border border-violet-900/30 text-slate-400 hover:text-violet-300 hover:border-violet-600/50"
+                  data-type="{{ ct }}">
+            {% if ct == 'bar' %}📊{% elif ct == 'line' %}📈{% elif ct == 'scatter' %}⚡{% elif ct == 'pie' %}🥧{% elif ct == 'doughnut' %}🍩{% elif ct == 'area' %}🏔{% endif %}
+            {{ label }}
+          </button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">X Axis (Category)</label>
+        <select id="x-axis" class="input-field text-sm">
+          <option value="">Select column…</option>
+          {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Y Axis (Value)</label>
+        <select id="y-axis" class="input-field text-sm">
+          <option value="">Select column…</option>
+          {% for col in numeric_columns %}<option value="{{ col.name|safe_preview }}">{{ col.name|safe_preview }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Aggregation</label>
+        <select id="aggregation" class="input-field text-sm">
+          <option value="sum">Sum</option>
+          <option value="mean">Mean (Average)</option>
+          <option value="count">Count</option>
+          <option value="min">Min</option>
+          <option value="max">Max</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-slate-400 text-xs mb-1.5 font-medium">Group By <span class="text-slate-600">(optional)</span></label>
+        <select id="group-by" class="input-field text-sm">
+          <option value="">None</option>
+          {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <button onclick="buildChart()" class="btn-primary w-full justify-center py-3">
+        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z"/></svg>
+        Build Chart
+      </button>
+
+      <div id="chart-error" class="hidden text-red-400 text-xs p-3 bg-red-900/20 rounded-lg border border-red-700/30"></div>
+    </div>
+
+    <!-- Chart canvas -->
+    <div class="lg:col-span-2 glass rounded-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-white font-semibold" id="chart-title">Chart Preview</h2>
+        <div class="flex gap-2" id="save-controls" style="display:none!important">
+          <input type="text" id="chart-name" placeholder="Chart name…" class="input-field text-xs py-1.5 w-40">
+          <form method="post" action="{% url 'analyser:save_chart' upload.id %}" id="save-form">
+            {% csrf_token %}
+            <input type="hidden" name="name" id="save-name">
+            <input type="hidden" name="chart_type" id="save-type">
+            <input type="hidden" name="x_axis" id="save-x">
+            <input type="hidden" name="y_axis" id="save-y">
+            <input type="hidden" name="group_by" id="save-group">
+            <input type="hidden" name="aggregation" id="save-agg">
+            <button type="submit" onclick="prepareSave()" class="btn-primary text-xs py-1.5 px-4">Save</button>
+          </form>
+        </div>
+      </div>
+
+      <div id="chart-placeholder" class="h-80 flex items-center justify-center border-2 border-dashed border-violet-900/30 rounded-xl">
+        <div class="text-center">
+          <div class="text-4xl mb-3">📊</div>
+          <p class="text-slate-500 text-sm">Configure and click "Build Chart"</p>
+        </div>
+      </div>
+      <div id="chart-spinner" class="hidden h-80 flex items-center justify-center">
+        <div class="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+      <div id="chart-container" class="hidden" style="height:350px; position:relative;">
+        <canvas id="main-chart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- Saved charts -->
+  {% if chart_configs %}
+  <div class="mt-8">
+    <h2 class="text-white font-semibold mb-4">Saved Charts</h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {% for cfg in chart_configs %}
+      <div class="glass rounded-xl p-4 cursor-pointer hover:glow transition-all"
+           onclick="loadSavedChart('{{ cfg.chart_type }}','{{ cfg.x_axis }}','{{ cfg.y_axis }}','{{ cfg.aggregation }}','{{ cfg.group_by }}')">
+        <div class="flex items-center justify-between mb-2">
+          <p class="text-white font-medium text-sm">{{ cfg.name }}</p>
+          <span class="text-xs text-violet-400 bg-violet-900/30 px-2 py-0.5 rounded">{{ cfg.chart_type }}</span>
+        </div>
+        <p class="text-slate-500 text-xs">{{ cfg.x_axis }} × {{ cfg.y_axis }} ({{ cfg.aggregation }})</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+let activeChartType = 'bar';
+let chartInstance = null;
+
+const CHART_TYPES = {{ chart_type_js|safe }};
+
+function selectChartType(type) {
+  activeChartType = type;
+  document.querySelectorAll('.chart-type-btn').forEach(b => {
+    b.classList.toggle('active-ct', b.dataset.type === type);
+    b.style.cssText = b.dataset.type === type
+      ? 'background:rgba(124,58,237,0.3);color:#c4b5fd;border-color:rgba(139,92,246,0.5);'
+      : '';
+  });
+}
+selectChartType('bar');
+
+function buildChart() {
+  const x = document.getElementById('x-axis').value;
+  const y = document.getElementById('y-axis').value;
+  if (!x || !y) { showError('Select both X and Y axes.'); return; }
+
+  document.getElementById('chart-placeholder').classList.add('hidden');
+  document.getElementById('chart-container').classList.add('hidden');
+  document.getElementById('chart-spinner').classList.remove('hidden');
+  document.getElementById('chart-error').classList.add('hidden');
+
+  const fd = new FormData();
+  fd.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+  fd.append('chart_type', activeChartType);
+  fd.append('x_axis', x);
+  fd.append('y_axis', y);
+  fd.append('aggregation', document.getElementById('aggregation').value);
+  fd.append('group_by', document.getElementById('group-by').value);
+
+  fetch('{% url "analyser:chart_data" upload.id %}', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('chart-spinner').classList.add('hidden');
+      if (data.error) { showError(data.error); return; }
+      renderChart(data);
+    })
+    .catch(e => { document.getElementById('chart-spinner').classList.add('hidden'); showError(e.message); });
+}
+
+function renderChart(data) {
+  document.getElementById('chart-container').classList.remove('hidden');
+  const saveControls = document.getElementById('save-controls');
+  saveControls.style.cssText = '';
+
+  if (chartInstance) { chartInstance.destroy(); }
+
+  const ctx = document.getElementById('main-chart').getContext('2d');
+  let type = data.chart_type === 'area' ? 'line' : data.chart_type;
+
+  Chart.defaults.color = '#94a3b8';
+  chartInstance = new Chart(ctx, {
+    type,
+    data: { labels: data.labels, datasets: data.datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 12 } } },
+      },
+      scales: type !== 'pie' && type !== 'doughnut' ? {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { color: '#64748b', maxRotation: 45 } },
+        y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#64748b' } },
+      } : undefined,
+    }
+  });
+  document.getElementById('chart-title').textContent =
+    `${document.getElementById('aggregation').value.toUpperCase()} of ${document.getElementById('y-axis').value} by ${document.getElementById('x-axis').value}`;
+}
+
+function prepareSave() {
+  document.getElementById('save-name').value = document.getElementById('chart-name').value || 'My Chart';
+  document.getElementById('save-type').value = activeChartType;
+  document.getElementById('save-x').value = document.getElementById('x-axis').value;
+  document.getElementById('save-y').value = document.getElementById('y-axis').value;
+  document.getElementById('save-group').value = document.getElementById('group-by').value;
+  document.getElementById('save-agg').value = document.getElementById('aggregation').value;
+}
+
+function loadSavedChart(type, x, y, agg, group) {
+  selectChartType(type);
+  document.getElementById('x-axis').value = x;
+  document.getElementById('y-axis').value = y;
+  document.getElementById('aggregation').value = agg;
+  document.getElementById('group-by').value = group;
+  buildChart();
+}
+
+function showError(msg) {
+  const el = document.getElementById('chart-error');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  document.getElementById('chart-placeholder').classList.remove('hidden');
+}
+</script>
+{% endblock %}

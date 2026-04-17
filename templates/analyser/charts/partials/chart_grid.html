@@ -1,0 +1,29 @@
+{% load datalens_extras %}
+
+{% if narrative_dashboard and narrative_dashboard.sections %}
+  {% for section in narrative_dashboard.sections %}
+  <section class="mb-8">
+    <div id="charts-grid-{{ section.key }}" class="charts-grid">
+      {% for chart in section.charts %}
+        {% include 'analyser/charts/partials/chart_card.html' with chart=chart upload=upload %}
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+<div id="charts-grid" class="charts-grid">
+{% if charts %}
+  {% for chart in charts %}
+    {% include 'analyser/charts/partials/chart_card.html' with chart=chart upload=upload %}
+  {% endfor %}
+{% else %}
+<div class="col-span-full" style="grid-column:1/-1;">
+  <div class="glass rounded-2xl p-16 text-center">
+    <div class="text-5xl mb-4">📊</div>
+    <p class="text-white font-semibold mb-1">No charts yet</p>
+    <p class="text-slate-400 text-sm mb-5">Click "AI Generate" for AI-powered charts, or "Auto-Generate" for rule-based charts.</p>
+  </div>
+</div>
+{% endif %}
+</div>
+{% endif %}

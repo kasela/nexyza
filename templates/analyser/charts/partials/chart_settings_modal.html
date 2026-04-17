@@ -1,0 +1,788 @@
+{% load datalens_extras %}
+<!-- ═══════════════════════════════════════════════════════════════
+     CHART SETTINGS MODAL + FULLSCREEN OVERLAY
+     Include once per page (in gallery.html and result.html)
+═══════════════════════════════════════════════════════════════ -->
+
+<!-- ── Settings modal ─────────────────────────────────────────── -->
+<div id="chart-settings-overlay"
+     style="display:none;position:fixed;inset:0;z-index:8000;background:rgba(4,2,12,0.8);backdrop-filter:blur(8px);align-items:center;justify-content:center;"
+     onclick="if(event.target===this)closeSettings()">
+
+  <div id="chart-settings-modal"
+       style="background:#0e0b1e;border:1px solid rgba(124,58,237,0.3);border-radius:20px;
+              width:min(760px,95vw);max-height:88vh;overflow:hidden;
+              display:flex;flex-direction:column;box-shadow:0 24px 80px rgba(0,0,0,0.7);">
+
+    <!-- Modal header -->
+    <div style="display:flex;align-items:center;gap:12px;padding:18px 24px 14px;border-bottom:1px solid rgba(124,58,237,0.15);flex-shrink:0;">
+      <div style="width:32px;height:32px;border-radius:8px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:14px;">⚙</div>
+      <div style="flex:1;">
+        <p id="modal-chart-title-display" style="color:#e2e8f0;font-weight:700;font-size:14px;margin:0;"></p>
+        <p style="color:#475569;font-size:11px;margin:0;">Chart Settings</p>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="duplicateCurrentChart()"
+                style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#94a3b8;font-size:11px;cursor:pointer;transition:.15s;"
+                onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.05)'">⧉ Duplicate</button>
+        <button onclick="deleteCurrentChart()"
+                style="padding:6px 12px;border-radius:8px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.05);color:#f87171;font-size:11px;cursor:pointer;transition:.15s;"
+                onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.05)'">🗑 Delete</button>
+        <button onclick="closeSettings()"
+                style="width:30px;height:30px;border-radius:8px;border:none;background:rgba(255,255,255,.06);color:#64748b;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;"
+                onmouseover="this.style.background='rgba(255,255,255,.12)'" onmouseout="this.style.background='rgba(255,255,255,.06)'">✕</button>
+      </div>
+    </div>
+
+    <!-- Modal body -->
+    <div style="display:flex;flex:1;overflow:hidden;">
+
+      <!-- Left: Live preview -->
+      <div style="width:340px;flex-shrink:0;border-right:1px solid rgba(124,58,237,0.12);padding:16px;display:flex;flex-direction:column;gap:10px;">
+        <div style="position:relative;flex:1;min-height:220px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;overflow:hidden;">
+          <canvas id="modal-preview-canvas" style="position:absolute;inset:12px;"></canvas>
+          <div id="modal-preview-kpi" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+            <p id="modal-kpi-value" style="font-size:2.2rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;"></p>
+            <p id="modal-kpi-label" style="color:#64748b;font-size:11px;margin:0;"></p>
+          </div>
+          <div id="modal-preview-msg" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">
+            <p style="color:#374151;font-size:12px;">Configure settings and click Apply</p>
+          </div>
+          <div id="modal-preview-loading" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;">
+            <svg class="animate-spin w-6 h-6 text-violet-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+          </div>
+        </div>
+
+        <!-- Chart type selector grid -->
+        <div>
+          <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;">Chart Type</p>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;" id="modal-type-grid">
+            {% for val,label in chart_type_choices %}
+            <button onclick="modalSetType('{{ val }}')" data-type="{{ val }}"
+                    title="{{ label }}"
+                    style="padding:6px 4px;border-radius:7px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.03);color:#64748b;font-size:10px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;align-items:center;gap:2px;"
+                    onmouseover="this.style.background='rgba(124,58,237,.15)';this.style.color='#a78bfa'"
+                    onmouseout="if(!this.classList.contains('modal-type-active')){this.style.background='rgba(255,255,255,.03)';this.style.color='#64748b';}">
+              <span style="font-size:14px;">{{ val|slice:":1"|upper }}{% if val == 'bar' %}▬{% elif val == 'horizontal_bar' %}≡{% elif val == 'line' %}∿{% elif val == 'area' %}◿{% elif val == 'scatter' %}⁘{% elif val == 'pie' %}◔{% elif val == 'doughnut' %}◎{% elif val == 'histogram' %}⬛{% elif val == 'heatmap' %}⊞{% elif val == 'kpi' %}🔢{% endif %}</span>
+              <span style="font-size:9px;line-height:1;">{{ label|truncatechars:6 }}</span>
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Color palette -->
+        <div>
+          <p style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px;">Color Palette</p>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;">
+            {% for val,label in color_choices %}
+            <button onclick="modalSetColor('{{ val }}')" data-color="{{ val }}"
+                    title="{{ label }}"
+                    style="width:26px;height:26px;border-radius:7px;border:2px solid transparent;cursor:pointer;transition:.15s;
+                    background:{% if val == 'violet' %}#7c3aed{% elif val == 'blue' %}#3b82f6{% elif val == 'emerald' %}#10b981{% elif val == 'amber' %}#f59e0b{% elif val == 'rose' %}#f43f5e{% elif val == 'cyan' %}#06b6d4{% else %}linear-gradient(135deg,#7c3aed,#3b82f6,#10b981){% endif %};">
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Download actions -->
+        <div style="display:flex;gap:6px;">
+          <button onclick="modalDownload('png')" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:11px;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">↓ PNG</button>
+          <button onclick="modalDownload('svg')" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:11px;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">↓ SVG</button>
+          <button onclick="modalCopyData()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:11px;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(255,255,255,.1)'" onmouseout="this.style.background='rgba(255,255,255,.04)'">📋 Copy</button>
+          <button onclick="openFullscreenFromModal()" style="flex:1;padding:7px;border-radius:8px;border:1px solid rgba(124,58,237,.25);background:rgba(124,58,237,.08);color:#a78bfa;font-size:11px;cursor:pointer;transition:.15s;" onmouseover="this.style.background='rgba(124,58,237,.2)'" onmouseout="this.style.background='rgba(124,58,237,.08)'">⛶ Full</button>
+        </div>
+      </div>
+
+      <!-- Right: Settings form -->
+      <div style="flex:1;overflow-y:auto;padding:16px 20px;">
+        <form id="modal-settings-form" style="display:flex;flex-direction:column;gap:14px;">
+          <input type="hidden" id="modal-cid" value="">
+
+          <!-- Title & Insight -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Chart Title</label>
+              <input type="text" id="modal-title" name="title" placeholder="Chart title"
+                     style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;"
+                     onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            </div>
+            <div>
+              <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Size</label>
+              <select id="modal-size" name="size"
+                      style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;"
+                      onchange="modalUpdatePreview()">
+                {% for val,label in size_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <!-- X Axis -->
+          <div>
+            <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">X Axis <span style="color:#334155;font-weight:400;">(dimension)</span></label>
+            <select id="modal-x-axis" name="x_axis"
+                    style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;"
+                    onchange="modalUpdatePreview()">
+              <option value="">— none —</option>
+              {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <!-- PRIMARY MEASURE -->
+          <div style="background:rgba(124,58,237,0.06);border:1px solid rgba(124,58,237,0.15);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+              <div style="width:10px;height:10px;border-radius:3px;background:#7c3aed;flex-shrink:0;"></div>
+              <span style="color:#a78bfa;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Primary Measure</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <label style="color:#64748b;font-size:10px;display:block;margin-bottom:3px;">Y Axis Column</label>
+                <select id="modal-y-axis" name="y_axis"
+                        style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#e2e8f0;font-size:12px;outline:none;"
+                        onchange="modalUpdatePreview()">
+                  <option value="">— select —</option>
+                  {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                </select>
+              </div>
+              <div>
+                <label style="color:#64748b;font-size:10px;display:block;margin-bottom:3px;">Aggregation</label>
+                <select id="modal-aggregation" name="aggregation"
+                        style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#e2e8f0;font-size:12px;outline:none;"
+                        onchange="modalUpdatePreview()">
+                  {% for val,label in agg_choices %}<option value="{{ val }}">{{ label }}</option>{% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- EXTRA MEASURES (multi-axis) -->
+          <div style="background:rgba(59,130,246,0.04);border:1px solid rgba(59,130,246,0.12);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div style="width:10px;height:10px;border-radius:3px;background:#3b82f6;flex-shrink:0;"></div>
+                <span style="color:#60a5fa;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Additional Measures</span>
+              </div>
+              <span style="color:#475569;font-size:10px;">Select multiple columns to overlay</span>
+            </div>
+
+            <!-- Checkbox list of all numeric columns -->
+            <div id="modal-extra-measures-list"
+                 style="display:grid;grid-template-columns:1fr 1fr;gap:4px;max-height:120px;overflow-y:auto;padding-right:4px;">
+              {% for col in all_columns %}
+              <label style="display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;cursor:pointer;transition:.1s;"
+                     onmouseover="this.style.background='rgba(59,130,246,.08)'" onmouseout="this.style.background='transparent'">
+                <input type="checkbox" name="extra_measure" value="{{ col }}"
+                       onchange="modalExtraMeasuresChanged()"
+                       style="accent-color:#3b82f6;width:13px;height:13px;cursor:pointer;flex-shrink:0;">
+                <span style="color:#94a3b8;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ col }}">{{ col }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+
+          <!-- DUAL Y AXIS option (shown when extra measures are selected) -->
+          <div id="dual-axis-section" style="display:none;background:rgba(16,185,129,0.04);border:1px solid rgba(16,185,129,0.12);border-radius:10px;padding:10px 12px;">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+              <div style="width:10px;height:10px;border-radius:3px;background:#10b981;flex-shrink:0;"></div>
+              <span style="color:#34d399;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Secondary Y Axis</span>
+              <label style="display:flex;align-items:center;gap:5px;margin-left:auto;cursor:pointer;">
+                <input type="checkbox" id="modal-dual-axis-enable" onchange="toggleDualAxis()"
+                       style="accent-color:#10b981;width:13px;height:13px;">
+                <span style="color:#64748b;font-size:11px;">Enable right Y axis</span>
+              </label>
+            </div>
+            <div id="dual-axis-config" style="display:none;">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <label style="color:#64748b;font-size:10px;display:block;margin-bottom:3px;">Column on right axis</label>
+                  <select id="modal-y2-axis"
+                          style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#e2e8f0;font-size:12px;outline:none;">
+                    <option value="">— same as left —</option>
+                    {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                  </select>
+                </div>
+                <div>
+                  <label style="color:#64748b;font-size:10px;display:block;margin-bottom:3px;">Right axis label</label>
+                  <input type="text" id="modal-y2-label" placeholder="e.g. Target (%)"
+                         style="width:100%;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:7px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;">
+                </div>
+              </div>
+              <p style="color:#334155;font-size:10px;margin:6px 0 0;">Tip: Use right axis for measures with different scales (e.g. Achievement % and Revenue LKR)</p>
+            </div>
+          </div>
+
+          <!-- Group By -->
+          <div>
+            <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Group By <span style="color:#334155;font-weight:400;">(categorical split, optional)</span></label>
+            <select id="modal-group-by" name="group_by"
+                    style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;"
+                    onchange="modalUpdatePreview()">
+              <option value="">— none —</option>
+              {% for col in all_columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+            </select>
+          </div>
+
+          <!-- Axis Labels -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">X Axis Label</label>
+              <input type="text" id="modal-x-label" placeholder="e.g. Month"
+                     style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;"
+                     onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            </div>
+            <div>
+              <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Y Axis Label</label>
+              <input type="text" id="modal-y-label" placeholder="e.g. Revenue (LKR)"
+                     style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;box-sizing:border-box;"
+                     onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            </div>
+          </div>
+
+          <!-- Insight -->
+          <div>
+            <label style="color:#64748b;font-size:10px;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:4px;">Insight / Description</label>
+            <textarea id="modal-insight" rows="2" placeholder="One-sentence business insight this chart reveals…"
+                      style="width:100%;padding:7px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#e2e8f0;font-size:12px;outline:none;resize:vertical;box-sizing:border-box;"
+                      onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'"></textarea>
+          </div>
+
+          <!-- Hidden fields -->
+          <input type="hidden" id="modal-chart-type" name="chart_type" value="bar">
+          <input type="hidden" id="modal-color" name="color" value="violet">
+
+          <!-- Action buttons -->
+          <div style="display:flex;gap:8px;align-items:center;padding-top:4px;border-top:1px solid rgba(124,58,237,0.1);">
+            <button type="button" onclick="modalApplyAndPreview()"
+                    style="flex:1;padding:9px;border-radius:10px;border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;"
+                    onmouseover="this.style.background='rgba(124,58,237,.2)'" onmouseout="this.style.background='rgba(124,58,237,.1)'">↺ Preview</button>
+            <button type="button" onclick="modalSaveAndClose()"
+                    style="flex:2;padding:9px;border-radius:10px;border:none;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:12px;font-weight:700;cursor:pointer;transition:.15s;box-shadow:0 4px 16px rgba(124,58,237,.3);"
+                    onmouseover="this.style.opacity='.9'" onmouseout="this.style.opacity='1'">✓ Save Changes</button>
+            <button type="button" onclick="closeSettings()"
+                    style="padding:9px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:transparent;color:#64748b;font-size:12px;cursor:pointer;">Cancel</button>
+          </div>
+          <p id="modal-save-status" style="color:#34d399;font-size:11px;text-align:center;display:none;margin:0;"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Fullscreen overlay ─────────────────────────────────────── -->
+<div id="fs-overlay"
+     style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(3,1,10,0.97);flex-direction:column;">
+  <div style="display:flex;align-items:center;gap:12px;padding:14px 24px 10px;border-bottom:1px solid rgba(124,58,237,0.15);flex-shrink:0;">
+    <p id="fs-title" style="color:#fff;font-weight:700;font-size:1rem;flex:1;margin:0;"></p>
+    <p id="fs-insight-txt" style="color:#475569;font-size:12px;max-width:400px;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></p>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button onclick="fsDownload('png')" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#94a3b8;font-size:11px;cursor:pointer;">↓ PNG</button>
+      <button onclick="fsCopyData()" style="padding:6px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);color:#94a3b8;font-size:11px;cursor:pointer;">📋 Copy data</button>
+      <button onclick="closeFullscreen()" style="padding:6px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#94a3b8;font-size:12px;cursor:pointer;">✕ Close  <span style="opacity:.4;font-size:10px;">Esc</span></button>
+    </div>
+  </div>
+  <div style="flex:1;padding:16px 32px 8px;position:relative;">
+    <canvas id="fs-canvas" style="position:absolute;inset:16px 32px 8px;"></canvas>
+    <div id="fs-kpi-view" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+      <p id="fs-kpi-val" style="font-size:5rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin:0;"></p>
+      <p id="fs-kpi-lbl" style="color:#64748b;font-size:16px;margin:0;"></p>
+    </div>
+  </div>
+  <!-- Type switcher bar -->
+  <div style="display:flex;align-items:center;gap:6px;padding:8px 24px 14px;border-top:1px solid rgba(124,58,237,0.1);flex-shrink:0;flex-wrap:wrap;">
+    <span style="color:#475569;font-size:11px;margin-right:4px;">Chart type:</span>
+    {% for val,label in chart_type_choices %}
+    <button class="fs-type-btn" data-ftype="{{ val }}" onclick="fsChangeType('{{ val }}')"
+            style="padding:5px 11px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#64748b;font-size:11px;cursor:pointer;transition:.15s;"
+            onmouseover="this.style.background='rgba(124,58,237,.15)';this.style.color='#a78bfa'"
+            onmouseout="if(!this.classList.contains('fs-type-active')){this.style.background='rgba(255,255,255,.04)';this.style.color='#64748b';}">{{ label }}</button>
+    {% endfor %}
+    <button onclick="openSettingsFromFullscreen()" style="margin-left:auto;padding:5px 14px;border-radius:7px;border:1px solid rgba(124,58,237,.3);background:rgba(124,58,237,.1);color:#a78bfa;font-size:11px;cursor:pointer;">⚙ Settings</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="chart-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(12px);background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:10px;padding:8px 20px;font-size:12px;color:#34d399;pointer-events:none;opacity:0;transition:all .3s;z-index:9999;">✓ Saved</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     JAVASCRIPT ENGINE
+════════════════════════════════════════════════════════════ -->
+<script>
+(function(){
+'use strict';
+window.DLCharts  = window.DLCharts  || {};
+window.DLChartMeta = window.DLChartMeta || {};
+
+/* ── State ─────────────────────────────────────────────── */
+var _cid         = null;   // current chart ID in modal
+var _modalChart  = null;   // Chart.js instance in preview
+var _fsChart     = null;   // Chart.js instance in fullscreen
+var _fsCid       = null;   // chart ID open in fullscreen
+var _pendingType = null;   // selected type in modal
+
+/* ── Helpers ──────────────────────────────────────────── */
+function getCsrf(){return document.cookie.match(/csrftoken=([^;]+)/)?.[1]||'';}
+function showToast(msg,ok){
+  var t=document.getElementById('chart-toast');
+  t.textContent=(ok!==false?'✓ ':'⚠ ')+msg;
+  t.style.background=ok!==false?'rgba(16,185,129,.15)':'rgba(239,68,68,.15)';
+  t.style.borderColor=ok!==false?'rgba(16,185,129,.3)':'rgba(239,68,68,.3)';
+  t.style.color=ok!==false?'#34d399':'#f87171';
+  t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)';
+  setTimeout(function(){t.style.opacity='0';t.style.transform='translateX(-50%) translateY(12px)';},2200);
+}
+function setLoading(on){
+  var ld=document.getElementById('modal-preview-loading');
+  if(ld) ld.style.display=on?'flex':'none';
+}
+function buildChartOptions(type,isH,yLbl,xLbl){
+  var scales={};
+  var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[type]||type;
+  if(jsType!=='pie'&&jsType!=='doughnut'&&jsType!=='kpi'){
+    var xA={grid:{color:'rgba(255,255,255,0.04)',drawBorder:false},ticks:{color:'#64748b',font:{size:10},maxRotation:isH?0:35,maxTicksLimit:isH?20:8}};
+    var yA={grid:{color:'rgba(255,255,255,0.06)',drawBorder:false},ticks:{color:'#64748b',font:{size:10},callback:function(v){if(yLbl&&yLbl.includes('%'))return v.toFixed(1)+'%';if(Math.abs(v)>=1e6)return(v/1e6).toFixed(1)+'M';if(Math.abs(v)>=1e3)return(v/1e3).toFixed(0)+'k';return typeof v==='number'?v.toFixed(1):v;}}};
+    if(xLbl)xA.title={display:true,text:xLbl,color:'#475569',font:{size:9}};
+    if(yLbl)yA.title={display:true,text:yLbl,color:'#475569',font:{size:9}};
+    scales=isH?{x:yA,y:xA}:{x:xA,y:yA};
+  }
+  return {
+    indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,animation:{duration:250},
+    plugins:{legend:{display:true,position:(jsType==='pie'||jsType==='doughnut')?'right':'top',labels:{color:'#94a3b8',font:{size:9},boxWidth:7,padding:5,usePointStyle:true}},
+    tooltip:{callbacks:{label:function(ctx){var v=ctx.parsed&&ctx.parsed.y!==undefined?ctx.parsed.y:ctx.parsed;if(typeof v!=='number')return' '+v;if(yLbl&&yLbl.includes('%'))return' '+v.toFixed(1)+'%';if(Math.abs(v)>=1e6)return' '+(v/1e6).toFixed(2)+'M';if(Math.abs(v)>=1e3)return' '+(v/1e3).toFixed(1)+'k';return' '+v.toFixed(2);}}}},scales:scales};
+}
+
+/* ── OPEN SETTINGS ───────────────────────────────────── */
+window.openChartSettings=function(cid){
+  _cid=cid;
+  var meta=DLChartMeta[cid]||{};
+  /* Populate fields */
+  document.getElementById('modal-cid').value=cid;
+  document.getElementById('modal-chart-title-display').textContent=meta.title||'Chart '+cid;
+  document.getElementById('modal-title').value=meta.title||'';
+  setSelectValue('modal-x-axis',   meta.x_axis);
+  setSelectValue('modal-y-axis',   meta.y_axis);
+  setSelectValue('modal-group-by', meta.group_by||'');
+  setSelectValue('modal-aggregation', meta.aggregation||'mean');
+  setSelectValue('modal-size',     meta.size||'md');
+  document.getElementById('modal-x-label').value=meta.x_label||'';
+  document.getElementById('modal-y-label').value=meta.y_label||'';
+  document.getElementById('modal-insight').value=meta.insight||'';
+  document.getElementById('modal-save-status').style.display='none';
+  /* Type and color */
+  _pendingType=meta.chart_type||'bar';
+  highlightType(_pendingType);
+  highlightColor(meta.color||'violet');
+  document.getElementById('modal-chart-type').value=_pendingType;
+  document.getElementById('modal-color').value=meta.color||'violet';
+  /* Extra measures: check the boxes */
+  var extraMeasures=meta.extra_measures||[];
+  document.querySelectorAll('#modal-extra-measures-list input[type=checkbox]').forEach(function(cb){
+    cb.checked=extraMeasures.indexOf(cb.value)!==-1;
+    /* Disable the primary y_axis option to avoid duplication */
+    cb.disabled=(cb.value===(meta.y_axis||''));
+  });
+  modalExtraMeasuresChanged();
+  /* Dual axis */
+  var y2Col=meta.y2_axis||'';
+  document.getElementById('modal-dual-axis-enable').checked=!!y2Col;
+  toggleDualAxis();
+  if(y2Col) setSelectValue('modal-y2-axis', y2Col);
+  document.getElementById('modal-y2-label').value=meta.y2_label||'';
+  /* Preview */
+  renderModalPreview(meta.raw, _pendingType);
+  /* Show modal */
+  document.getElementById('chart-settings-overlay').style.display='flex';
+};
+function setSelectValue(id,val){var el=document.getElementById(id);if(!el)return;for(var i=0;i<el.options.length;i++){if(el.options[i].value===(val||'')){el.selectedIndex=i;return;}}el.selectedIndex=0;}
+/* When primary y_axis changes, disable that option in extra-measures */
+document.getElementById('modal-y-axis').addEventListener('change',function(){
+  var primary=this.value;
+  document.querySelectorAll('#modal-extra-measures-list input[type=checkbox]').forEach(function(cb){
+    cb.disabled=(cb.value===primary);
+    if(cb.disabled) cb.checked=false;
+  });
+  modalExtraMeasuresChanged();
+});
+function highlightType(type){
+  document.querySelectorAll('#modal-type-grid button').forEach(function(b){
+    var isAct=b.dataset.type===type;
+    b.classList.toggle('modal-type-active',isAct);
+    b.style.background=isAct?'rgba(124,58,237,.3)':'rgba(255,255,255,.03)';
+    b.style.color=isAct?'#c4b5fd':'#64748b';
+    b.style.borderColor=isAct?'rgba(124,58,237,.5)':'rgba(255,255,255,.07)';
+  });
+}
+function highlightColor(color){
+  document.querySelectorAll('[data-color]').forEach(function(b){
+    b.style.borderColor=b.dataset.color===color?'#fff':'transparent';
+    b.style.transform=b.dataset.color===color?'scale(1.15)':'scale(1)';
+  });
+}
+
+/* ── MODAL TYPE / COLOR ───────────────────────────────── */
+window.modalSetType=function(type){
+  _pendingType=type;
+  document.getElementById('modal-chart-type').value=type;
+  highlightType(type);
+  modalUpdatePreview();
+};
+window.modalSetColor=function(color){
+  document.getElementById('modal-color').value=color;
+  highlightColor(color);
+  modalUpdatePreview();
+};
+
+/* ── PREVIEW ──────────────────────────────────────────── */
+window.modalUpdatePreview=function(){
+  if(!_cid) return;
+  var meta=DLChartMeta[_cid];
+  if(!meta||!meta.raw) return;
+  var type=document.getElementById('modal-chart-type').value||_pendingType||'bar';
+  renderModalPreview(meta.raw, type);
+};
+var _previewDebounce=null;
+function renderModalPreview(raw,type){
+  clearTimeout(_previewDebounce);
+  _previewDebounce=setTimeout(function(){_renderPreviewNow(raw,type);},80);
+}
+function _renderPreviewNow(raw,type){
+  var kpiEl=document.getElementById('modal-preview-kpi');
+  var msgEl=document.getElementById('modal-preview-msg');
+  var canvas=document.getElementById('modal-preview-canvas');
+
+  /* KPI card */
+  if(type==='kpi'||(raw&&raw.kpi)){
+    canvas.style.display='none'; kpiEl.style.display='flex'; if(msgEl)msgEl.style.display='none';
+    if(raw&&raw.kpi){document.getElementById('modal-kpi-value').textContent=raw.value||'—';document.getElementById('modal-kpi-label').textContent=raw.label||'';}
+    return;
+  }
+  kpiEl.style.display='none'; canvas.style.display='block'; if(msgEl)msgEl.style.display='none';
+  if(!raw||!raw.labels||!raw.labels.length){if(msgEl)msgEl.style.display='flex';canvas.style.display='none';return;}
+
+  if(_modalChart){_modalChart.destroy();_modalChart=null;}
+  var isH=type==='horizontal_bar';
+  var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[type]||type;
+  var yLbl=document.getElementById('modal-y-label').value||raw.y_label||'';
+  var xLbl=document.getElementById('modal-x-label').value||raw.x_label||'';
+  _modalChart=new Chart(canvas,{
+    type:isH?'bar':jsType,
+    data:{labels:raw.labels,datasets:raw.datasets},
+    options:buildChartOptions(type,isH,yLbl,xLbl)
+  });
+}
+
+/* ── LIVE PREVIEW (fetch from API) ───────────────────── */
+window.modalApplyAndPreview=function(){
+  if(!_cid) return;
+  setLoading(true);
+  var meta=DLChartMeta[_cid];
+  var fd=new FormData();
+  fd.append('csrfmiddlewaretoken',getCsrf());
+  fd.append('chart_type', document.getElementById('modal-chart-type').value);
+  fd.append('x_axis',     document.getElementById('modal-x-axis').value);
+  fd.append('y_axis',     document.getElementById('modal-y-axis').value);
+  fd.append('group_by',   document.getElementById('modal-group-by').value);
+  fd.append('aggregation',document.getElementById('modal-aggregation').value);
+  fd.append('color',      document.getElementById('modal-color').value);
+  fd.append('title',      document.getElementById('modal-title').value);
+  /* Extra measures for live preview */
+  var pExtras=[];
+  document.querySelectorAll('#modal-extra-measures-list input[type=checkbox]:checked').forEach(function(cb){pExtras.push(cb.value);});
+  fd.append('config_json_extra_measures', pExtras.join(','));
+  var pY2=document.getElementById('modal-dual-axis-enable').checked?(document.getElementById('modal-y2-axis').value||''):'';
+  fd.append('config_json_y2_axis', pY2);
+  fetch('/workspace/'+(meta.upload_pk)+'/charts/preview/',{method:'POST',body:fd})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      setLoading(false);
+      /* Update metadata cache */
+      DLChartMeta[_cid].raw=data;
+      renderModalPreview(data, document.getElementById('modal-chart-type').value);
+    })
+    .catch(function(){setLoading(false);});
+};
+
+/* ── SAVE ─────────────────────────────────────────────── */
+window.modalSaveAndClose=function(){
+  if(!_cid) return;
+  var meta=DLChartMeta[_cid];
+  var fd=new URLSearchParams();
+  fd.append('csrfmiddlewaretoken',getCsrf());
+  fd.append('title',      document.getElementById('modal-title').value);
+  fd.append('chart_type', document.getElementById('modal-chart-type').value);
+  fd.append('x_axis',     document.getElementById('modal-x-axis').value);
+  fd.append('y_axis',     document.getElementById('modal-y-axis').value);
+  fd.append('group_by',   document.getElementById('modal-group-by').value);
+  fd.append('aggregation',document.getElementById('modal-aggregation').value);
+  fd.append('color',      document.getElementById('modal-color').value);
+  fd.append('size',       document.getElementById('modal-size').value);
+  var xLbl=document.getElementById('modal-x-label').value;
+  var yLbl=document.getElementById('modal-y-label').value;
+  var insight=document.getElementById('modal-insight').value;
+  /* Store label/insight in config_json via hidden payload */
+  fd.append('config_json_x_label',  xLbl);
+  fd.append('config_json_y_label',  yLbl);
+  fd.append('config_json_insight',  insight);
+  /* Extra measures */
+  var extras=[];
+  document.querySelectorAll('#modal-extra-measures-list input[type=checkbox]:checked').forEach(function(cb){extras.push(cb.value);});
+  fd.append('config_json_extra_measures', extras.join(','));
+  /* Dual axis */
+  var y2Enabled=document.getElementById('modal-dual-axis-enable').checked;
+  var y2Col=y2Enabled?(document.getElementById('modal-y2-axis').value||''):'';
+  var y2Lbl=document.getElementById('modal-y2-label').value||'';
+  fd.append('config_json_y2_axis',  y2Col);
+  fd.append('config_json_y2_label', y2Lbl);
+
+  fetch('/workspace/'+(meta.upload_pk)+'/charts/'+_cid+'/update/',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded','X-CSRFToken':getCsrf()},
+    body:fd.toString()
+  }).then(function(r){return r.json();})
+  .then(function(resp){
+    if(resp.ok){
+      showToast('Chart saved');
+      /* Update card in DOM */
+      _refreshCardInPlace(_cid, fd);
+      closeSettings();
+    }else{
+      showToast('Save failed',false);
+    }
+  }).catch(function(e){showToast('Network error',false);});
+};
+function _refreshCardInPlace(cid, fd){
+  var meta=DLChartMeta[cid]||{};
+  meta.chart_type    =fd.get('chart_type');
+  meta.color         =fd.get('color');
+  meta.size          =fd.get('size');
+  meta.title         =fd.get('title');
+  meta.x_axis        =fd.get('x_axis');
+  meta.y_axis        =fd.get('y_axis');
+  meta.group_by      =fd.get('group_by');
+  meta.aggregation   =fd.get('aggregation');
+  var emStr=fd.get('config_json_extra_measures')||'';
+  meta.extra_measures=emStr?emStr.split(',').filter(Boolean):[];
+  meta.y2_axis       =fd.get('config_json_y2_axis')||'';
+  meta.y2_label      =fd.get('config_json_y2_label')||'';
+  meta.insight       =fd.get('config_json_insight')||'';
+  meta.x_label       =fd.get('config_json_x_label')||'';
+  meta.y_label       =fd.get('config_json_y_label')||'';
+  DLChartMeta[cid]=meta;
+
+  /* Update title text immediately */
+  var titleEl=document.querySelector('#chart-card-'+cid+' p[title]') || document.querySelector('#cw-'+cid+' p[title]');
+  if(titleEl) titleEl.textContent=meta.title;
+
+  /* Re-fetch rendered data from server and re-draw chart in place */
+  fetch('/workspace/'+meta.upload_pk+'/charts/'+cid+'/data/')
+    .then(function(r){return r.json();})
+    .then(function(raw){
+      if(!raw||raw.error){setTimeout(function(){location.reload();},300);return;}
+      meta.raw=raw; DLChartMeta[cid]=meta;
+      if(window.DLCharts&&window.DLCharts[cid]){window.DLCharts[cid].destroy();delete window.DLCharts[cid];}
+      var canvas=document.getElementById('cc-'+cid);
+      if(!canvas){setTimeout(function(){location.reload();},300);return;}
+      var ctype=raw.chart_type||'bar',isH=!!raw.is_horizontal;
+      var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[ctype]||ctype;
+      var yLbl=raw.y_label||'',xLbl=raw.x_label||'';
+      var scales={};
+      if(jsType!=='pie'&&jsType!=='doughnut'){
+        scales=isH
+          ?{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:9}}},y:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#64748b',font:{size:9}}}}
+          :{x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#64748b',font:{size:9},maxTicksLimit:9}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:9}}}};
+        if(raw.has_dual_axis&&raw.y2_label&&!isH){
+          scales.y2={position:'right',grid:{drawOnChartArea:false,color:'rgba(59,130,246,0.04)'},
+            ticks:{color:'#60a5fa',font:{size:9}},
+            title:raw.y2_label?{display:true,text:raw.y2_label,color:'#60a5fa',font:{size:9}}:{display:false}};
+        }
+      }
+      Chart.defaults.color='#94a3b8';
+      var newInst=new Chart(canvas,{
+        type:isH?'bar':jsType,
+        data:{labels:raw.labels,datasets:raw.datasets||[]},
+        options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,animation:{duration:300},
+          plugins:{legend:{display:(raw.datasets||[]).length>1||jsType==='pie'||jsType==='doughnut',
+            position:(jsType==='pie'||jsType==='doughnut')?'right':'top',
+            labels:{color:'#94a3b8',font:{size:9},boxWidth:8,padding:6,usePointStyle:true}},
+          tooltip:{callbacks:{label:function(ctx){var v=ctx.parsed&&ctx.parsed.y!==undefined?ctx.parsed.y:ctx.parsed;
+            if(typeof v!=='number')return' '+v;
+            if(yLbl&&yLbl.includes('%'))return' '+v.toFixed(1)+'%';
+            if(Math.abs(v)>=1e6)return' '+(v/1e6).toFixed(2)+'M';
+            if(Math.abs(v)>=1e3)return' '+(v/1e3).toFixed(1)+'k';
+            return' '+v.toFixed(2);}}}},scales:scales}
+      });
+      window.DLCharts=window.DLCharts||{};
+      window.DLCharts[cid]=newInst;
+      showToast('Chart updated');
+    })
+    .catch(function(){setTimeout(function(){location.reload();},300);});
+}
+
+/* ── CLOSE ─────────────────────────────────────────────── */
+window.modalExtraMeasuresChanged=function(){
+  var checked=[];
+  document.querySelectorAll('#modal-extra-measures-list input[type=checkbox]:checked').forEach(function(cb){
+    checked.push(cb.value);
+  });
+  var dualSection=document.getElementById('dual-axis-section');
+  if(dualSection) dualSection.style.display=checked.length>0?'block':'none';
+  /* Populate y2 axis dropdown with only checked measures */
+  var y2Sel=document.getElementById('modal-y2-axis');
+  if(y2Sel){
+    var prev=y2Sel.value;
+    var opts='<option value="">— same as left —</option>';
+    checked.forEach(function(m){opts+='<option value="'+m+'">'+m+'</option>';});
+    y2Sel.innerHTML=opts;
+    if(prev) setSelectValue('modal-y2-axis',prev);
+  }
+  modalUpdatePreview();
+};
+window.toggleDualAxis=function(){
+  var enabled=document.getElementById('modal-dual-axis-enable').checked;
+  var cfg=document.getElementById('dual-axis-config');
+  if(cfg) cfg.style.display=enabled?'block':'none';
+};
+window.closeSettings=function(){
+  document.getElementById('chart-settings-overlay').style.display='none';
+  if(_modalChart){_modalChart.destroy();_modalChart=null;}
+  _cid=null;
+};
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){closeSettings();closeFullscreen();}});
+
+/* ── DELETE / DUPLICATE ───────────────────────────────── */
+window.deleteCurrentChart=function(){
+  if(!_cid) return;
+  if(!confirm('Delete this chart?')) return;
+  var meta=DLChartMeta[_cid];
+  fetch('/workspace/'+(meta.upload_pk)+'/charts/'+_cid+'/delete/',{
+    method:'POST',headers:{'X-CSRFToken':getCsrf()}
+  }).then(function(){
+    var card=document.getElementById('chart-card-'+_cid) || document.getElementById('cw-'+_cid);
+    if(card) card.remove();
+    closeSettings();
+    showToast('Chart deleted');
+  });
+};
+window.duplicateCurrentChart=function(){
+  if(!_cid) return;
+  var meta=DLChartMeta[_cid];
+  fetch('/workspace/'+(meta.upload_pk)+'/charts/'+_cid+'/duplicate/',{
+    method:'POST',headers:{'X-CSRFToken':getCsrf(),'HX-Request':'true'}
+  }).then(function(){
+    closeSettings();
+    showToast('Chart duplicated');
+    setTimeout(function(){window.location.reload();},400);
+  });
+};
+
+/* ── DOWNLOAD ─────────────────────────────────────────── */
+window.quickDownload=function(cid){
+  if(window.NexyzaChartActions&&typeof window.NexyzaChartActions.quickDownload==='function'){
+    return window.NexyzaChartActions.quickDownload(cid);
+  }
+  var inst=DLCharts[cid];
+  if(!inst){showToast('Chart not ready',false);return;}
+  var a=document.createElement('a');
+  a.href=inst.toBase64Image();
+  a.download='chart-'+cid+'.png'; a.click();
+  showToast('PNG downloaded');
+};
+window.modalDownload=function(fmt){
+  var inst=_modalChart||(DLCharts[_cid]);
+  if(!inst){showToast('No chart to download',false);return;}
+  var a=document.createElement('a');
+  a.href=inst.toBase64Image();
+  a.download='chart.'+fmt; a.click();
+  showToast(fmt.toUpperCase()+' downloaded');
+};
+window.modalCopyData=function(){
+  var meta=DLChartMeta[_cid];
+  var raw=meta&&meta.raw;
+  if(!raw||!raw.labels){showToast('No data',false);return;}
+  var rows=[raw.labels.join('\t')];
+  (raw.datasets||[]).forEach(function(ds){rows.push(ds.data.join('\t'));});
+  navigator.clipboard.writeText(rows.join('\n')).then(function(){showToast('Data copied to clipboard');});
+};
+
+/* ── FULLSCREEN ───────────────────────────────────────── */
+window.openFullscreen=function(cid){
+  _fsCid=cid;
+  var meta=DLChartMeta[cid]||{};
+  var raw=meta.raw;
+  document.getElementById('fs-title').textContent=meta.title||('Chart '+cid);
+  document.getElementById('fs-insight-txt').textContent=meta.insight||'';
+  /* Highlight type */
+  document.querySelectorAll('.fs-type-btn').forEach(function(b){
+    var isAct=b.dataset.ftype===(meta.chart_type||'bar');
+    b.classList.toggle('fs-type-active',isAct);
+    b.style.background=isAct?'rgba(124,58,237,.25)':'rgba(255,255,255,.04)';
+    b.style.color=isAct?'#c4b5fd':'#64748b';
+    b.style.borderColor=isAct?'rgba(124,58,237,.4)':'rgba(255,255,255,.08)';
+  });
+  document.getElementById('fs-overlay').style.display='flex';
+  /* Render */
+  var fsType=meta.chart_type||'bar';
+  _renderFullscreen(raw, fsType);
+};
+function _renderFullscreen(raw, type){
+  if(_fsChart){_fsChart.destroy();_fsChart=null;}
+  var kpiEl=document.getElementById('fs-kpi-view');
+  var canvas=document.getElementById('fs-canvas');
+  if(!raw){return;}
+  if(raw.kpi||(type==='kpi')){
+    canvas.style.display='none'; kpiEl.style.display='flex';
+    document.getElementById('fs-kpi-val').textContent=raw.value||'—';
+    document.getElementById('fs-kpi-lbl').textContent=raw.label||'';
+    return;
+  }
+  kpiEl.style.display='none'; canvas.style.display='block';
+  if(!raw.labels||!raw.labels.length) return;
+  var isH=type==='horizontal_bar';
+  var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[type]||type;
+  _fsChart=new Chart(canvas,{
+    type:isH?'bar':jsType,
+    data:{labels:raw.labels,datasets:raw.datasets},
+    options:buildChartOptions(type,isH,raw.y_label||'',raw.x_label||'')
+  });
+}
+window.closeFullscreen=function(){
+  document.getElementById('fs-overlay').style.display='none';
+  if(_fsChart){_fsChart.destroy();_fsChart=null;}
+  _fsCid=null;
+};
+window.fsChangeType=function(type){
+  document.querySelectorAll('.fs-type-btn').forEach(function(b){
+    var isAct=b.dataset.ftype===type;
+    b.classList.toggle('fs-type-active',isAct);
+    b.style.background=isAct?'rgba(124,58,237,.25)':'rgba(255,255,255,.04)';
+    b.style.color=isAct?'#c4b5fd':'#64748b';
+    b.style.borderColor=isAct?'rgba(124,58,237,.4)':'rgba(255,255,255,.08)';
+  });
+  var meta=DLChartMeta[_fsCid]||{};
+  _renderFullscreen(meta.raw||{}, type);
+};
+window.fsDownload=function(fmt){
+  if(!_fsChart&&!document.getElementById('fs-kpi-view').style.display.includes('flex')){showToast('No chart',false);return;}
+  var canvas=_fsChart?_fsChart.canvas:document.getElementById('fs-canvas');
+  var a=document.createElement('a'); a.href=canvas.toDataURL('image/png'); a.download='chart-fullscreen.'+fmt; a.click();
+  showToast(fmt.toUpperCase()+' downloaded');
+};
+window.fsCopyData=function(){
+  if(!_fsCid) return;
+  var raw=(DLChartMeta[_fsCid]||{}).raw;
+  if(!raw||!raw.labels){showToast('No data',false);return;}
+  var rows=[raw.labels.join('\t')];
+  (raw.datasets||[]).forEach(function(ds){rows.push(ds.data.join('\t'));});
+  navigator.clipboard.writeText(rows.join('\n')).then(function(){showToast('Data copied');});
+};
+window.openSettingsFromFullscreen=function(){
+  var cid=_fsCid;
+  closeFullscreen();
+  setTimeout(function(){openChartSettings(cid);},100);
+};
+window.openFullscreenFromModal=function(){
+  var cid=_cid;
+  closeSettings();
+  setTimeout(function(){openFullscreen(cid);},100);
+};
+
+})();
+</script>

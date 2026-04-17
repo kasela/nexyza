@@ -1,0 +1,21 @@
+{% load analyser_safety %}
+<div class="glass rounded-2xl p-4" style="border:1px solid rgba(124,58,237,0.15);">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-white font-semibold">Saved views</h3>
+    <button type="button" id="save-current-view" class="btn-secondary py-2 px-3 text-xs">Save current</button>
+  </div>
+  <div class="space-y-2" id="saved-views-list">
+    {% for view in saved_views %}
+      <div class="rounded-xl px-3 py-2 bg-white/5 border border-white/10 flex items-center justify-between gap-2 saved-view-item" data-view-id="{{ view.id }}">
+        <button type="button" class="text-left flex-1 min-w-0 load-saved-view">
+          <p class="text-sm text-slate-200 truncate">{{ view.title|safe_preview }}</p>
+          <p class="text-[11px] text-slate-500">{{ view.comparison_mode|default:'No comparison' }}</p>
+        </button>
+        {% if view.is_default %}<span class="text-[10px] uppercase tracking-wide text-violet-300">default</span>{% endif %}
+        <button type="button" class="text-rose-300 text-xs delete-saved-view">Delete</button>
+      </div>
+    {% empty %}
+      <p class="text-sm text-slate-400" id="saved-views-empty">No saved analysis views yet.</p>
+    {% endfor %}
+  </div>
+</div>

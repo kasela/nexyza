@@ -1,0 +1,62 @@
+# Core
+Django==5.0.4
+django-allauth==0.63.3
+django-htmx==1.19.0
+whitenoise==6.7.0
+python-decouple==3.8
+
+# Data processing
+pandas==2.2.2
+openpyxl==3.1.3
+xlrd==2.0.1
+
+# AI
+anthropic>=0.94.1
+
+# HTTP
+requests==2.32.3
+
+# Images
+Pillow==10.3.0
+
+# Production
+gunicorn==22.0.0
+psycopg2-binary==2.9.9
+
+# Utilities
+shortuuid==1.0.13
+
+# v2 additions
+django-q2==1.7.3          # Scheduled tasks (reports)
+django-cors-headers==4.4.0 # CORS for API
+
+# Optional: production object storage
+# django-storages==1.14.3
+# boto3==1.34.0
+
+# v4 additions
+# (all v4 features use stdlib + already-installed packages)
+# django-q2 already handles pipelines
+# anthropic already handles NLQ + AI charts
+# No additional pip installs needed for v4
+
+# v5 additions
+reportlab==4.2.2          # PDF export
+xlsxwriter==3.2.0         # Enhanced Excel export (optional, openpyxl already works)
+
+# v7 additions
+channels==4.1.0       # WebSocket real-time collaboration
+daphne==4.1.2         # ASGI server for Channels
+
+# Missing from original (required for current features)
+python-pptx==1.0.2        # PowerPoint export
+matplotlib==3.9.2         # Chart rendering in PDF/PPTX
+numpy==1.26.4             # Required by matplotlib + pandas
+
+# Production Redis (for Channels + Django-Q in multi-worker setup)
+redis==5.0.8
+channels-redis==4.2.0     # Replace InMemoryChannelLayer in production
+
+# Security
+django-axes==6.5.0        # Brute-force login protection
+

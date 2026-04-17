@@ -1,0 +1,59 @@
+{% extends 'app_base.html' %}
+{% block title %}Users — Admin{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold text-white">Users</h1>
+    <a href="{% url 'core:admin_dashboard' %}" class="btn-secondary text-xs py-2 px-4">← Dashboard</a>
+  </div>
+  <!-- Search & filter -->
+  <form method="get" class="flex gap-3 mb-6">
+    <input type="text" name="q" value="{{ q }}" placeholder="Search email or name…" class="input-field text-sm flex-1">
+    <select name="status" class="input-field text-sm w-36">
+      <option value="">All users</option>
+      <option value="pro" {% if status == 'pro' %}selected{% endif %}>Pro</option>
+      <option value="free" {% if status == 'free' %}selected{% endif %}>Free</option>
+      <option value="staff" {% if status == 'staff' %}selected{% endif %}>Staff</option>
+    </select>
+    <button type="submit" class="btn-primary py-2 px-5">Search</button>
+  </form>
+  <div class="glass rounded-2xl overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="border-b border-violet-900/20">
+          <th class="text-left px-4 py-3 text-slate-400 font-semibold text-xs">User</th>
+          <th class="text-left px-4 py-3 text-slate-400 font-semibold text-xs">Plan</th>
+          <th class="text-right px-4 py-3 text-slate-400 font-semibold text-xs">Uploads</th>
+          <th class="text-left px-4 py-3 text-slate-400 font-semibold text-xs">Joined</th>
+          <th class="text-left px-4 py-3 text-slate-400 font-semibold text-xs">Verified</th>
+          <th class="px-4 py-3"></th>
+        </tr></thead>
+        <tbody>
+          {% for u in users %}
+          <tr class="border-b border-slate-800/40 hover:bg-violet-900/10 transition-colors">
+            <td class="px-4 py-3">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style="background:linear-gradient(135deg,#7c3aed,#3b82f6)">{{ u.email|first|upper }}</div>
+                <div><p class="text-white text-sm">{{ u.get_full_name|default:u.email }}</p><p class="text-slate-500 text-xs truncate max-w-[200px]">{{ u.email }}</p></div>
+                {% if u.is_staff %}<span class="text-xs px-1.5 py-0.5 rounded bg-amber-900/30 text-amber-400">staff</span>{% endif %}
+              </div>
+            </td>
+            <td class="px-4 py-3">
+              {% with sub=u.subscription %}
+              {% if sub and sub.is_active %}<span class="badge-pro">PRO</span>{% else %}<span class="badge-free">FREE</span>{% endif %}
+              {% endwith %}
+            </td>
+            <td class="px-4 py-3 text-right text-slate-300 font-mono text-xs">{{ u.uc }}</td>
+            <td class="px-4 py-3 text-slate-400 text-xs">{{ u.created_at|date:"M d, Y" }}</td>
+            <td class="px-4 py-3">{% if u.is_email_verified %}<span class="text-green-400 text-xs">✓</span>{% else %}<span class="text-slate-600 text-xs">—</span>{% endif %}</td>
+            <td class="px-4 py-3"><a href="{% url 'core:admin_user_detail' u.id %}" class="btn-secondary text-xs py-1.5 px-3">View</a></td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="px-4 py-10 text-center text-slate-500">No users found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

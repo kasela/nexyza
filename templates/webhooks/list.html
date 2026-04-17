@@ -1,0 +1,46 @@
+{% extends 'app_base.html' %}
+{% block title %}Webhooks — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div><h1 class="text-2xl font-bold text-white">Webhooks</h1><p class="text-slate-400 text-sm mt-1">Trigger external services when events happen in Nexyza.</p></div>
+    <button onclick="document.getElementById('wh-modal').classList.remove('hidden')" class="btn-primary">+ New Webhook</button>
+  </div>
+  {% if hooks %}
+  <div class="space-y-4">{% for wh in hooks %}
+    <div class="glass rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {% if wh.is_active %}bg-violet-900/30{% else %}bg-slate-800{% endif %}"><span class="text-lg">🔗</span></div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-semibold">{{ wh.name }}</p>
+        <p class="text-slate-400 text-xs truncate">{{ wh.url }}</p>
+        <p class="text-slate-600 text-xs mt-0.5">{{ wh.events|join:", " }} &middot; ✓ {{ wh.success_count }} ✗ {{ wh.failure_count }} {% if wh.last_fired %}&middot; Last fired {{ wh.last_fired|timesince }} ago{% endif %}</p>
+      </div>
+      <div class="flex gap-2 flex-wrap">
+        <a href="{% url 'webhooks:log' wh.id %}" class="btn-secondary text-xs py-2 px-3">Log</a>
+        <form method="post" action="{% url 'webhooks:test' wh.id %}">{% csrf_token %}<button class="btn-secondary text-xs py-2 px-3">Test</button></form>
+        <form method="post" action="{% url 'webhooks:toggle' wh.id %}">{% csrf_token %}<button class="btn-secondary text-xs py-2 px-3 {% if not wh.is_active %}text-green-400{% else %}text-amber-400{% endif %}">{% if wh.is_active %}Pause{% else %}Enable{% endif %}</button></form>
+        <form method="post" action="{% url 'webhooks:delete' wh.id %}" onsubmit="return confirm('Delete?')">{% csrf_token %}<button class="text-slate-600 hover:text-red-400 p-2 transition-colors">✕</button></form>
+      </div>
+    </div>{% endfor %}
+  </div>
+  {% else %}
+  <div class="glass rounded-2xl p-16 text-center"><div class="text-5xl mb-4">🔗</div><p class="text-white font-semibold mb-1">No webhooks yet</p><p class="text-slate-400 text-sm">Connect Nexyza events to Zapier, Make, Slack, or any HTTP endpoint.</p></div>
+  {% endif %}
+</div>
+<div id="wh-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,.75);backdrop-filter:blur(6px)" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="glass rounded-2xl p-8 w-full max-w-lg glow">
+    <h2 class="text-white font-bold text-lg mb-5">New Webhook</h2>
+    <form method="post" action="{% url 'webhooks:create' %}" class="space-y-4">{% csrf_token %}
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Name</label><input type="text" name="name" required class="input-field text-sm" placeholder="My Webhook"></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Endpoint URL</label><input type="url" name="url" required class="input-field text-sm" placeholder="https://hooks.zapier.com/…"></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Events (select all that apply)</label>
+        <div class="space-y-1.5 glass-sm rounded-xl p-3">
+          {% for val,label in event_choices %}
+          <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="events" value="{{ val }}" class="accent-violet-600"><span class="text-slate-300 text-sm">{{ label }}</span></label>
+          {% endfor %}
+        </div></div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Secret (for signature verification)</label><input type="text" name="secret" class="input-field text-sm font-mono" placeholder="Leave blank to auto-generate"></div>
+      <button type="submit" class="btn-primary w-full justify-center py-3">Create Webhook</button>
+    </form>
+  </div>
+</div>{% endblock %}

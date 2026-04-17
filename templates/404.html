@@ -1,0 +1,15 @@
+{% extends 'public_base.html' %}
+{% block title %}Page Not Found — Nexyza{% endblock %}
+{% block content %}
+<div class="min-h-[80vh] flex items-center justify-center px-4">
+  <div class="text-center max-w-lg">
+    <p class="text-8xl font-extrabold gradient-text mb-4" style="font-family:'Sora',sans-serif">404</p>
+    <h1 class="text-2xl font-bold text-white mb-3">Page not found</h1>
+    <p class="text-slate-400 mb-8">The page you're looking for doesn't exist or has been moved.</p>
+    <div class="flex gap-3 justify-center">
+      <a href="/" class="btn-outline">Go Home</a>
+      {% if user.is_authenticated %}<a href="/dashboard/" class="btn-cta py-2.5 px-6">Dashboard</a>{% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

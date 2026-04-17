@@ -1,0 +1,177 @@
+{% extends 'app_base.html' %}
+{% load static datalens_extras %}
+{% block title %}Nexyza Chat | {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+  <div class="mb-5 flex items-center justify-between gap-4">
+    <div>
+      <div class="text-xs uppercase tracking-[0.22em] text-slate-500">Nexyza AI chat</div>
+      <h1 class="mt-2 text-3xl font-bold text-white">Let’s shape your dashboard</h1>
+    </div>
+    <div class="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
+      {{ upload.original_name }}
+    </div>
+  </div>
+
+  <div class="overflow-hidden rounded-[32px] border border-white/10 bg-[radial-gradient(circle_at_top,rgba(124,58,237,0.12),transparent_34%),linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.96))] shadow-[0_30px_90px_rgba(2,6,23,0.45)]">
+    <div id="nexyza-chat-scroll" class="max-h-[68vh] overflow-y-auto px-4 py-6 sm:px-6 sm:py-7">
+      <div class="space-y-5">
+        {% for turn in review_state.conversation_turns %}
+          {% if turn.role == 'assistant' %}
+            <div class="flex items-end gap-3">
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-lg shadow-lg shadow-violet-950/30">🤖</div>
+              <div class="max-w-[84%] rounded-[24px] rounded-bl-md border border-white/10 bg-white/5 px-4 py-3.5 text-[15px] leading-7 text-slate-100 backdrop-blur-sm sm:px-5">
+                {{ turn.message }}
+                {% if turn.kind == 'question' and turn.meta_json.friendly_help_text %}
+                  <div class="mt-2 text-sm text-slate-400">{{ turn.meta_json.friendly_help_text }}</div>
+                {% endif %}
+              </div>
+            </div>
+          {% else %}
+            <div class="flex items-end justify-end gap-3">
+              <div class="max-w-[78%] rounded-[24px] rounded-br-md border border-violet-400/20 bg-violet-500/10 px-4 py-3.5 text-[15px] leading-7 text-slate-100 sm:px-5">
+                {{ turn.answer_label|default:turn.message }}
+              </div>
+              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-slate-900 text-lg">🙂</div>
+            </div>
+          {% endif %}
+        {% endfor %}
+
+        {% if review_state.chat_question %}
+          <div class="flex items-end gap-3" id="typing-row">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-lg shadow-lg shadow-violet-950/30">🤖</div>
+            <div class="rounded-[24px] rounded-bl-md border border-white/10 bg-white/5 px-4 py-3 text-slate-300 backdrop-blur-sm">
+              <div class="flex items-center gap-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-violet-300 animate-pulse"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-cyan-300 animate-pulse [animation-delay:140ms]"></span>
+                <span class="h-2.5 w-2.5 rounded-full bg-fuchsia-300 animate-pulse [animation-delay:280ms]"></span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="border-t border-white/10 px-4 py-4 sm:px-6 sm:py-5">
+      {% if review_state.chat_question %}
+        <form method="post" action="{% url 'analyser:submit_profile_review' upload.id %}" class="space-y-4" id="nexyza-chat-form">
+          {% csrf_token %}
+          <input type="hidden" name="active_key" value="{{ review_state.chat_question.key }}">
+
+          <div class="flex items-end gap-3">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-lg shadow-lg shadow-violet-950/30">🤖</div>
+            <div class="min-w-0 max-w-[88%] rounded-[24px] rounded-bl-md border border-white/10 bg-white/5 px-4 py-3.5 text-[15px] leading-7 text-white backdrop-blur-sm sm:px-5">
+              {{ review_state.chat_question.prompt }}
+            </div>
+          </div>
+
+          {% if review_state.chat_question.chat_type == 'single_choice' or review_state.chat_question.chat_type == 'yes_no' %}
+            <div class="ml-14 flex flex-wrap gap-3">
+              {% for choice in review_state.chat_question.choices %}
+                <button type="submit" name="{{ review_state.chat_question.key }}" value="{{ choice.value }}" class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-100 transition hover:border-violet-400/40 hover:bg-violet-500/10">
+                  {% if choice.emoji %}<span>{{ choice.emoji }}</span>{% endif %}
+                  <span>{{ choice.label }}</span>
+                </button>
+              {% endfor %}
+            </div>
+          {% elif review_state.chat_question.chat_type == 'multi_choice' %}
+            <div class="ml-14 flex flex-wrap gap-3" id="multi-choice-group" data-max-select="{{ review_state.chat_question.max_select|default:3 }}">
+              {% with selected=existing_answers|get_item:review_state.chat_question.key %}
+              {% for choice in review_state.chat_question.choices %}
+                <label class="chat-chip inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-100 transition hover:border-violet-400/40 hover:bg-violet-500/10">
+                  <input type="checkbox" class="sr-only" name="{{ review_state.chat_question.key }}" value="{{ choice.value }}" {% if selected %}{% if choice.value in selected %}checked{% endif %}{% endif %}>
+                  {% if choice.emoji %}<span>{{ choice.emoji }}</span>{% endif %}
+                  <span>{{ choice.label }}</span>
+                </label>
+              {% endfor %}
+              {% endwith %}
+            </div>
+            <div class="ml-14 flex flex-wrap items-center gap-3 pt-1">
+              <button type="submit" name="action" value="next" class="rounded-full bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30">Send</button>
+            </div>
+          {% else %}
+            <div class="ml-14 space-y-3">
+              <textarea name="{{ review_state.chat_question.key }}" rows="3" placeholder="{{ review_state.chat_question.placeholder|default:'Type your reply...' }}" class="w-full rounded-[24px] border border-white/10 bg-slate-950/80 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-500 focus:border-violet-400/40 focus:outline-none">{{ existing_answers|get_item:review_state.chat_question.key|default:'' }}</textarea>
+              <button type="submit" name="action" value="next" class="rounded-full bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/30">Send</button>
+            </div>
+          {% endif %}
+
+          <div class="ml-14 flex flex-wrap items-center gap-3 pt-1 text-sm">
+            <button type="submit" name="action" value="skip" class="rounded-full border border-white/10 bg-transparent px-4 py-2.5 text-slate-300 transition hover:bg-white/5">Skip</button>
+            {% if review_state.chat_question.allow_dont_know %}
+              <button type="submit" name="action" value="dont_know" class="rounded-full border border-white/10 bg-transparent px-4 py-2.5 text-slate-300 transition hover:bg-white/5">Don’t know</button>
+            {% endif %}
+            <a href="{% url 'analyser:result' upload.id %}" class="rounded-full border border-white/10 bg-transparent px-4 py-2.5 text-slate-300 transition hover:bg-white/5">Exit</a>
+            {% if review_state.ready_to_build %}
+              <button type="submit" name="action" value="finish" class="rounded-full bg-emerald-600 px-5 py-2.5 font-semibold text-white">Build dashboard</button>
+            {% endif %}
+          </div>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'analyser:submit_profile_review' upload.id %}" class="flex items-center justify-between gap-4">
+          {% csrf_token %}
+          <div class="text-sm text-slate-300">I’ve got what I need now.</div>
+          <div class="flex items-center gap-3">
+            <a href="{% url 'analyser:result' upload.id %}" class="rounded-full border border-white/10 px-4 py-2.5 text-slate-300">Exit</a>
+            <button type="submit" name="action" value="finish" class="rounded-full bg-violet-600 px-5 py-2.5 font-semibold text-white">Build dashboard</button>
+          </div>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+
+{% if show_debug_data_profile and debug_data_profile %}
+  <div class="mt-4">
+    <button
+      type="button"
+      onclick="document.getElementById('debug-data-profile').classList.toggle('hidden')"
+      class="inline-flex items-center gap-2 rounded-full border border-amber-400/20 bg-amber-500/10 px-4 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-500/15"
+    >
+      <span>🛠️</span>
+      <span>View analysed data profile</span>
+    </button>
+    <div id="debug-data-profile" class="mt-3 hidden overflow-hidden rounded-[24px] border border-white/10 bg-slate-950/95 shadow-[0_20px_60px_rgba(2,6,23,0.45)]">
+      <div class="border-b border-white/10 px-4 py-3 text-xs uppercase tracking-[0.2em] text-slate-400">Temporary debug panel</div>
+      <pre class="max-h-[32rem] overflow-auto px-4 py-4 text-xs leading-6 text-slate-200 whitespace-pre-wrap">{{ debug_data_profile }}</pre>
+    </div>
+  </div>
+{% endif %}
+
+<script>
+  (function () {
+    const scrollBox = document.getElementById('nexyza-chat-scroll');
+    if (scrollBox) scrollBox.scrollTop = scrollBox.scrollHeight;
+
+    const chips = document.querySelectorAll('.chat-chip');
+    chips.forEach((chip) => {
+      const input = chip.querySelector('input[type="checkbox"]');
+      const group = document.getElementById('multi-choice-group');
+      const maxSelect = parseInt(group?.dataset.maxSelect || '3', 10);
+      const refresh = () => {
+        const checked = group ? group.querySelectorAll('input[type="checkbox"]:checked').length : 0;
+        chips.forEach((item) => {
+          const cb = item.querySelector('input[type="checkbox"]');
+          const isChecked = cb?.checked;
+          item.classList.toggle('border-violet-400/50', !!isChecked);
+          item.classList.toggle('bg-violet-500/15', !!isChecked);
+          item.classList.toggle('shadow-lg', !!isChecked);
+          if (!isChecked && checked >= maxSelect) {
+            item.classList.add('opacity-50');
+          } else {
+            item.classList.remove('opacity-50');
+          }
+        });
+      };
+      input?.addEventListener('change', () => {
+        const checked = group ? group.querySelectorAll('input[type="checkbox"]:checked').length : 0;
+        if (checked > maxSelect && input.checked) {
+          input.checked = false;
+        }
+        refresh();
+      });
+      refresh();
+    });
+  })();
+</script>
+{% endblock %}

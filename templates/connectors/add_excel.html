@@ -1,0 +1,71 @@
+{% extends 'app_base.html' %}
+{% block title %}Add Excel Online File — Nexyza{% endblock %}
+{% block content %}
+<div style="max-width:600px;margin:0 auto;padding:40px 20px;">
+  <div style="margin-bottom:28px;">
+    <a href="{% url 'connectors:list' %}" style="color:#475569;font-size:13px;text-decoration:none;">← Live Connectors</a>
+    <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:12px 0 4px;">Connect Excel Online</h1>
+    <p style="color:#64748b;font-size:13px;margin:0;">Paste the sharing link from your OneDrive or SharePoint Excel file.</p>
+  </div>
+
+  {% if error %}
+  <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:12px 16px;margin-bottom:16px;color:#f87171;font-size:13px;">
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <div style="background:rgba(255,255,255,.03);border:1px solid rgba(124,58,237,.15);border-radius:16px;padding:28px;">
+    <form method="post">
+      {% csrf_token %}
+      <div style="margin-bottom:14px;">
+        <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">File Sharing URL *</label>
+        <input type="url" name="file_url" required value="{{ form_data.file_url|default:'' }}"
+               placeholder="https://onedrive.live.com/... or https://sharepoint.com/..."
+               style="width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid {% if field_errors.file_url %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %};border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='{% if field_errors.file_url %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %}'">
+        {% if field_errors.file_url %}<p style="color:#fca5a5;font-size:11px;margin:5px 0 0;">{{ field_errors.file_url }}</p>{% else %}<p style="color:#475569;font-size:11px;margin:4px 0 0;">In Excel Online: Share → Copy Link</p>{% endif %}
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Connection Name</label>
+        <input type="text" name="name" value="{{ form_data.name|default:'' }}" placeholder="e.g. Monthly Sales Report"
+               style="width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid {% if field_errors.name %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %};border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;"
+               onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='{% if field_errors.name %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %}'">
+        {% if field_errors.name %}<p style="color:#fca5a5;font-size:11px;margin:5px 0 0;">{{ field_errors.name }}</p>{% endif %}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div>
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Sheet / Tab name</label>
+          <input type="text" name="tab" value="{{ form_data.tab|default:'' }}" placeholder="Sheet1 (optional)"
+                 style="width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid {% if field_errors.tab %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %};border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;"
+                 onfocus="this.style.borderColor='rgba(124,58,237,.4)'" onblur="this.style.borderColor='{% if field_errors.tab %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %}'">
+          {% if field_errors.tab %}<p style="color:#fca5a5;font-size:11px;margin:5px 0 0;">{{ field_errors.tab }}</p>{% endif %}
+        </div>
+        <div>
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Auto-refresh (minutes)</label>
+          <select name="refresh_interval"
+                  style="width:100%;padding:9px 12px;background:rgba(255,255,255,.04);border:1px solid {% if field_errors.refresh_interval %}rgba(239,68,68,.45){% else %}rgba(255,255,255,.1){% endif %};border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;">
+            <option value="60" {% if form_data.refresh_interval|default:'60' == '60' %}selected{% endif %}>Every hour</option>
+            <option value="360" {% if form_data.refresh_interval == '360' %}selected{% endif %}>Every 6 hours</option>
+            <option value="1440" {% if form_data.refresh_interval == '1440' %}selected{% endif %}>Daily</option>
+            <option value="0" {% if form_data.refresh_interval == '0' %}selected{% endif %}>Manual only</option>
+          </select>
+          {% if field_errors.refresh_interval %}<p style="color:#fca5a5;font-size:11px;margin:5px 0 0;">{{ field_errors.refresh_interval }}</p>{% endif %}
+        </div>
+      </div>
+      <button type="submit" class="btn-primary" style="width:100%;padding:11px;font-size:14px;font-weight:700;">
+        📗 Connect Excel File →
+      </button>
+    </form>
+  </div>
+
+  <div style="margin-top:20px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px;">
+    <p style="color:#94a3b8;font-weight:600;font-size:13px;margin:0 0 10px;">How to get the sharing URL</p>
+    <ol style="color:#64748b;font-size:12px;line-height:1.8;margin:0;padding-left:18px;">
+      <li>Open your Excel file in OneDrive or SharePoint</li>
+      <li>Click <strong style="color:#94a3b8;">Share</strong> in the top-right corner</li>
+      <li>Make sure it's set to <strong style="color:#94a3b8;">"Anyone with the link can view"</strong></li>
+      <li>Click <strong style="color:#94a3b8;">Copy link</strong> and paste it above</li>
+    </ol>
+  </div>
+</div>
+{% endblock %}

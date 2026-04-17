@@ -1,0 +1,124 @@
+{% extends 'app_base.html' %}
+{% load chart_tags %}
+{% block title %}Board Report | {{ upload.original_name }}{% endblock %}
+{% block content %}
+<style>
+  @media print {
+    .no-print { display:none !important; }
+    .board-page-break { break-before: page; page-break-before: always; }
+    .board-avoid-break { break-inside: avoid; page-break-inside: avoid; }
+    body { background: #fff !important; }
+  }
+</style>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="rounded-3xl border border-violet-500/20 bg-slate-950/70 backdrop-blur-xl shadow-2xl shadow-violet-950/20 overflow-hidden">
+    <div class="px-6 py-6 border-b border-white/10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 no-print">
+      <div>
+        <div class="text-xs uppercase tracking-[0.24em] text-violet-300/80 mb-2">Board report mode</div>
+        <h1 class="text-3xl font-semibold text-white">{{ upload.original_name }}</h1>
+        <p class="text-sm text-slate-400 mt-2">Grouped board-ready layout with executive snapshot, sectioned chart narrative, and print-friendly presentation.</p>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        <a href="{% url 'analyser:analysis_studio' upload.id %}" class="px-4 py-2 rounded-2xl border border-white/10 text-slate-300 hover:bg-white/5">Back to studio</a>
+        <a href="{% url 'analyser:chart_gallery' upload.id %}" class="px-4 py-2 rounded-2xl border border-violet-400/30 text-violet-200 bg-violet-500/15 hover:bg-violet-500/25">Chart gallery</a>
+        <a href="{% url 'exports:pdf' upload.id %}?mode=executive" class="px-4 py-2 rounded-2xl border border-emerald-400/30 text-emerald-200 bg-emerald-500/15 hover:bg-emerald-500/25">Export PDF</a>
+        <a href="{% url 'exports:pptx' upload.id %}" class="px-4 py-2 rounded-2xl border border-amber-400/30 text-amber-200 bg-amber-500/15 hover:bg-amber-500/25">Export PPT</a>
+        <button onclick="window.print()" class="px-4 py-2 rounded-2xl border border-white/10 text-slate-300 hover:bg-white/5">Print / Save PDF</button>
+      </div>
+    </div>
+
+    <div class="p-6 space-y-6">
+      <section class="rounded-3xl border border-white/10 bg-white/[0.03] p-6 board-avoid-break">
+        <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+          <div>
+            <div class="text-[11px] uppercase tracking-[0.24em] text-slate-500 mb-2">Executive overview</div>
+            <h2 class="text-2xl font-semibold text-white">{{ board_meta.analysis_type }}</h2>
+            <p class="text-sm text-slate-400 mt-2">This board pack is organised in business reading order so the first page surfaces performance, ranking, and stock signals before supporting diagnostics.</p>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 min-w-0 xl:min-w-[420px]">
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Sections</div>
+              <div class="text-lg font-semibold text-white mt-2">{{ board_meta.section_count }}</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Charts</div>
+              <div class="text-lg font-semibold text-white mt-2">{{ board_meta.chart_count }}</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Rows</div>
+              <div class="text-lg font-semibold text-white mt-2">{{ board_meta.row_count }}</div>
+            </div>
+            <div class="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <div class="text-[11px] uppercase tracking-[0.2em] text-slate-500">Columns</div>
+              <div class="text-lg font-semibold text-white mt-2">{{ board_meta.column_count }}</div>
+            </div>
+          </div>
+        </div>
+
+        {% if dashboard_layout.executive_snapshot %}
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mt-6">
+            {% for item in dashboard_layout.executive_snapshot %}
+              <div class="rounded-2xl px-4 py-4 border border-white/10 bg-white/[0.03]">
+                <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">{{ item.label }}</p>
+                <p class="text-xl font-semibold mt-2 {% if item.tone == 'rose' %}text-rose-300{% elif item.tone == 'emerald' %}text-emerald-300{% elif item.tone == 'cyan' %}text-cyan-300{% elif item.tone == 'amber' %}text-amber-300{% else %}text-violet-300{% endif %}">{{ item.value }}</p>
+                <p class="text-xs text-slate-500 mt-2">{{ item.helper }}</p>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mt-6">
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-2">Primary lens</div>
+            <p class="text-sm text-slate-200">{% if board_meta.primary_dimension %}{{ board_meta.primary_dimension }}{% else %}Not set{% endif %}</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-2">Main measure</div>
+            <p class="text-sm text-slate-200">{% if board_meta.primary_measure %}{{ board_meta.primary_measure }}{% else %}Not set{% endif %}</p>
+          </div>
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-2">Supporting measure</div>
+            <p class="text-sm text-slate-200">{% if board_meta.secondary_measure %}{{ board_meta.secondary_measure }}{% else %}Not set{% endif %}</p>
+          </div>
+        </div>
+
+        {% if dashboard_layout.narrative %}
+          <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-5 mt-6">
+            <div class="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-3">Board highlights</div>
+            <div class="space-y-2">
+              {% for point in dashboard_layout.narrative %}
+                <div class="flex items-start gap-2">
+                  <span class="mt-1.5 h-1.5 w-1.5 rounded-full bg-violet-400"></span>
+                  <p class="text-sm text-slate-300">{{ point }}</p>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </section>
+
+      {% for section in dashboard_layout.sections %}
+        <section class="rounded-3xl border border-white/10 bg-white/[0.03] overflow-hidden board-avoid-break {% if not forloop.first %}board-page-break{% endif %}">
+          <div class="px-6 py-5 border-b border-white/10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
+            <div>
+              <div class="text-[11px] uppercase tracking-[0.22em] text-violet-300/80 mb-2">Section {{ forloop.counter }}</div>
+              <h3 class="text-xl font-semibold text-white">{{ section.title }}</h3>
+              <p class="text-sm text-slate-400 mt-1">{{ section.description }}</p>
+            </div>
+            <div class="text-xs text-slate-500">{{ section.charts|length }} chart{{ section.charts|length|pluralize }}</div>
+          </div>
+          <div class="p-6 grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {% for chart in section.charts %}
+              {% with chart_obj=chart.object|default:chart %}
+                {% include 'analyser/partials/report_chart_block.html' with chart=chart_obj upload=upload only %}
+              {% endwith %}
+            {% endfor %}
+          </div>
+        </section>
+      {% empty %}
+        <div class="rounded-3xl border border-white/10 bg-white/[0.03] p-10 text-center text-slate-400">No charts available yet.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

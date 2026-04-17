@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><style>
+body{font-family:system-ui,sans-serif;background:#0d0b17;color:#e2e0f0;margin:0;padding:0}
+.container{max-width:600px;margin:0 auto;padding:24px}
+.header{background:linear-gradient(135deg,#7c3aed,#3b82f6);border-radius:12px;padding:24px;margin-bottom:24px;text-align:center}
+.header h1{color:white;margin:0;font-size:24px}
+.header p{color:rgba(255,255,255,0.7);margin:8px 0 0;font-size:14px}
+.card{background:#1e1b2e;border:1px solid rgba(139,92,246,0.2);border-radius:12px;padding:20px;margin-bottom:16px}
+.stat{display:inline-block;background:#13111f;border-radius:8px;padding:8px 16px;margin:4px;text-align:center}
+.stat .val{font-size:20px;font-weight:700;color:white;display:block}
+.stat .lbl{font-size:11px;color:#64748b}
+.btn{display:inline-block;background:linear-gradient(135deg,#7c3aed,#6d28d9);color:white;padding:10px 24px;border-radius:8px;text-decoration:none;font-size:13px;font-weight:600;margin-top:12px}
+.ai{background:#13111f;border-radius:8px;padding:16px;margin-top:12px;font-size:13px;color:#94a3b8;line-height:1.6}
+.footer{text-align:center;color:#374151;font-size:11px;margin-top:24px}
+</style></head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Nexyza Report</h1>
+    <p>{{ report.name }} &middot; {{ generated_at|date:"N j, Y" }}</p>
+  </div>
+  {% for s in summaries %}
+  <div class="card">
+    <h2 style="color:white;margin:0 0 12px;font-size:16px">{{ s.name }}</h2>
+    <div>
+      <div class="stat"><span class="val">{{ s.rows }}</span><span class="lbl">Rows</span></div>
+      <div class="stat"><span class="val">{{ s.cols }}</span><span class="lbl">Columns</span></div>
+    </div>
+    {% if s.ai_summary %}<div class="ai">{{ s.ai_summary }}</div>{% endif %}
+    <a href="{{ s.url }}" class="btn">View Full Analysis &rarr;</a>
+  </div>
+  {% endfor %}
+  <div class="footer">
+    <p>You're receiving this because you set up a scheduled report in Nexyza.</p>
+    <p>&copy; 2025 Nexyza</p>
+  </div>
+</div>
+</body>
+</html>

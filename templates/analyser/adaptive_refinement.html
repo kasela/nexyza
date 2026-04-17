@@ -1,0 +1,186 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Adaptive Refinement | {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+  <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <div>
+      <div class="text-xs uppercase tracking-[0.24em] text-violet-300">Adaptive refinement engine</div>
+      <h1 class="mt-2 text-3xl font-bold text-white">Guide the dashboard without chat</h1>
+      <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-300">{{ dataset_summary }}</p>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <a href="{% url 'analyser:adaptive_refinement_download' upload.id %}" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">Download JSON</a>
+      <a href="{% url 'analyser:result' upload.id %}" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">Back to dataset</a>
+      <a href="{% url 'analyser:build_dashboard' upload.id %}" class="rounded-2xl bg-violet-600 px-4 py-3 text-sm font-semibold text-white">Build dashboard</a>
+    </div>
+  </div>
+
+  <div class="mb-6 grid gap-4 lg:grid-cols-4">
+    <div class="rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-slate-950/20 lg:col-span-3">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Detected dataset type</div>
+          <div class="mt-2 text-2xl font-semibold text-white">{{ classification.primary_label }}</div>
+          <div class="mt-1 text-sm text-slate-400">Confidence {{ classification.confidence|floatformat:0 }}%</div>
+        </div>
+        <div class="min-w-[260px]">
+          <div class="mb-2 flex items-center justify-between text-xs uppercase tracking-[0.18em] text-slate-400">
+            <span>Progress</span><span>{{ answered_count }}/{{ total_questions }}</span>
+          </div>
+          <div class="h-3 overflow-hidden rounded-full bg-slate-800">
+            <div class="h-full rounded-full bg-gradient-to-r from-violet-500 to-cyan-400" style="width: {{ progress_pct }}%"></div>
+          </div>
+        </div>
+      </div>
+      {% if classification.secondary_patterns %}
+      <div class="mt-4 flex flex-wrap gap-2">
+        {% for item in classification.secondary_patterns %}
+          <span class="rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1 text-xs font-medium text-violet-200">{{ item }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    <div class="rounded-[28px] border border-white/10 bg-white/5 p-5 shadow-2xl shadow-slate-950/20">
+      <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Current recommendation</div>
+      <div class="mt-3 text-sm text-slate-200">{{ recommendations.output_mode|default:'Executive summary + charts' }}</div>
+      <div class="mt-3 text-xs text-slate-400">Main measure</div>
+      <div class="mt-1 text-sm text-white">{{ recommendations.main_measures|first|default:'Not selected yet' }}</div>
+      <div class="mt-3 text-xs text-slate-400">Main comparison</div>
+      <div class="mt-1 text-sm text-white">{{ recommendations.important_dimensions|first|default:'Not selected yet' }}</div>
+    </div>
+  </div>
+
+  <div class="grid gap-6 xl:grid-cols-[1.6fr,1fr]">
+    <div class="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.94),rgba(2,6,23,0.96))] p-6 shadow-[0_30px_90px_rgba(2,6,23,0.45)]">
+      {% if current_question %}
+      <div class="mb-6 flex items-center justify-between gap-4">
+        <div>
+          <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Step {{ current_step|add:1 }} of {{ total_questions }}</div>
+          <h2 class="mt-2 text-2xl font-semibold text-white">{{ current_question.label }}</h2>
+          {% if current_question.help_text %}<p class="mt-2 text-sm leading-7 text-slate-400">{{ current_question.help_text }}</p>{% endif %}
+        </div>
+      </div>
+      <form method="post" action="{% url 'analyser:adaptive_refinement_submit' upload.id %}" class="space-y-5">
+        {% csrf_token %}
+        <input type="hidden" name="active_key" value="{{ current_question.key }}">
+
+        {% if current_question.type == 'single_select' %}
+          <div class="grid gap-3 sm:grid-cols-2">
+            {% with selected=existing_answers|get_item:current_question.key %}
+            {% for choice in current_question.choices %}
+              <label class="group cursor-pointer rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:border-violet-400/40 hover:bg-violet-500/10">
+                <input type="radio" name="{{ current_question.key }}" value="{{ choice.value }}" class="sr-only" {% if selected == choice.value or not selected and current_question.default == choice.value %}checked{% endif %}>
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <div class="text-sm font-semibold text-white">{{ choice.label }}</div>
+                    <div class="mt-1 text-xs text-slate-400">Value: {{ choice.value }}</div>
+                  </div>
+                  <span class="mt-1 h-4 w-4 rounded-full border border-white/20"></span>
+                </div>
+              </label>
+            {% endfor %}
+            {% endwith %}
+          </div>
+        {% elif current_question.type == 'multi_select' %}
+          <div class="grid gap-3 sm:grid-cols-2">
+            {% with selected=existing_answers|get_item:current_question.key %}
+            {% for choice in current_question.choices %}
+              <label class="group cursor-pointer rounded-3xl border border-white/10 bg-white/5 p-4 transition hover:border-violet-400/40 hover:bg-violet-500/10">
+                <input type="checkbox" name="{{ current_question.key }}" value="{{ choice.value }}" class="sr-only refinement-choice" data-max-select="{{ current_question.max_select|default:3 }}" {% if selected %}{% if choice.value in selected %}checked{% endif %}{% elif current_question.default and choice.value in current_question.default %}checked{% endif %}>
+                <div class="flex items-start justify-between gap-4">
+                  <div>
+                    <div class="text-sm font-semibold text-white">{{ choice.label }}</div>
+                    <div class="mt-1 text-xs text-slate-400">Value: {{ choice.value }}</div>
+                  </div>
+                  <span class="mt-1 flex h-5 w-5 items-center justify-center rounded-md border border-white/20 text-[11px] text-white">✓</span>
+                </div>
+              </label>
+            {% endfor %}
+            {% endwith %}
+          </div>
+          <div class="text-xs text-slate-400">Choose up to {{ current_question.max_select|default:3 }} options.</div>
+        {% else %}
+          <textarea name="{{ current_question.key }}" rows="4" class="w-full rounded-[28px] border border-white/10 bg-slate-950/80 px-5 py-4 text-[15px] text-slate-100 placeholder:text-slate-500 focus:border-violet-400/40 focus:outline-none" placeholder="{{ current_question.placeholder|default:'Describe the focus you want' }}">{{ existing_answers|get_item:current_question.key|default:current_question.default }}</textarea>
+        {% endif %}
+
+        <div class="flex flex-wrap items-center gap-3 pt-2">
+          {% if current_step > 0 %}<button type="submit" name="action" value="back" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">Back</button>{% endif %}
+          <button type="submit" name="action" value="skip" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-medium text-slate-200">Skip</button>
+          {% if current_step < total_questions|add:-1 %}
+            <button type="submit" name="action" value="next" class="rounded-2xl bg-violet-600 px-5 py-3 text-sm font-semibold text-white">Save and continue</button>
+          {% else %}
+            <button type="submit" name="action" value="finish" class="rounded-2xl bg-emerald-600 px-5 py-3 text-sm font-semibold text-white">Apply and build dashboard</button>
+          {% endif %}
+        </div>
+      </form>
+      {% else %}
+        <div class="rounded-3xl border border-white/10 bg-white/5 p-8 text-center text-slate-300">No refinement questions were generated for this dataset.</div>
+      {% endif %}
+    </div>
+
+    <div class="space-y-6">
+      <div class="rounded-[32px] border border-white/10 bg-white/5 p-6">
+        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Recommended sections</div>
+        <div class="mt-4 space-y-3">
+          {% for section in recommendations.recommended_sections %}
+            <div class="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm text-slate-200">{{ section }}</div>
+          {% empty %}
+            <div class="text-sm text-slate-400">Recommendations will update as answers are saved.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-[32px] border border-white/10 bg-white/5 p-6">
+        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Chart priority</div>
+        <div class="mt-4 space-y-3">
+          {% for item in recommendations.chart_priority %}
+            <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+              <div class="flex items-center justify-between gap-3">
+                <div class="text-sm font-semibold text-white">{{ item.type }}</div>
+                <div class="text-xs text-slate-400">{{ item.purpose }}</div>
+              </div>
+              <div class="mt-2 text-xs leading-6 text-slate-400">x: {{ item.x|default:'—' }} · y: {{ item.y|default:'—' }}{% if item.benchmark %} · benchmark: {{ item.benchmark }}{% endif %}</div>
+            </div>
+          {% empty %}
+            <div class="text-sm text-slate-400">Choose a metric and dimension to unlock chart recommendations.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="rounded-[32px] border border-white/10 bg-white/5 p-6">
+        <div class="text-xs uppercase tracking-[0.2em] text-slate-400">Answered decisions</div>
+        <div class="mt-4 space-y-3">
+          {% for q in questions %}
+            {% with val=existing_answers|get_item:q.key %}
+            {% if val %}
+            <div class="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+              <div class="text-xs uppercase tracking-[0.16em] text-slate-400">{{ q.label }}</div>
+              <div class="mt-2 text-sm text-white">{% if q.type == 'multi_select' %}{{ val|join:', ' }}{% else %}{{ val }}{% endif %}</div>
+            </div>
+            {% endif %}
+            {% endwith %}
+          {% empty %}
+            <div class="text-sm text-slate-400">No answers saved yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  document.querySelectorAll('.refinement-choice').forEach(function(input){
+    input.addEventListener('change', function(){
+      const name = input.name;
+      const max = parseInt(input.dataset.maxSelect || '3', 10);
+      const checked = Array.from(document.querySelectorAll('input[name="'+name+'"]:checked'));
+      if (checked.length > max) {
+        input.checked = false;
+      }
+    });
+  });
+})();
+</script>
+{% endblock %}

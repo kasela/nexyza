@@ -1,0 +1,81 @@
+{% extends 'app_base.html' %}
+{% block title %}Scheduled Reports — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-3xl font-bold text-white">Scheduled Reports</h1>
+      <p class="text-slate-400 text-sm mt-1">Receive email digests of your data analyses automatically.</p>
+    </div>
+    <button onclick="document.getElementById('new-report-modal').classList.remove('hidden')" class="btn-primary">+ New Report</button>
+  </div>
+
+  {% if reports %}
+  <div class="space-y-4 mb-10">
+    {% for report in reports %}
+    <div class="glass rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center gap-4">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 {% if report.is_active %}bg-violet-900/30{% else %}bg-slate-800{% endif %}">
+        <span class="text-lg">{% if report.frequency == 'weekly' %}📅{% else %}🗓{% endif %}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-white font-semibold">{{ report.name }}</p>
+        <p class="text-slate-400 text-sm">{{ report.frequency|title }} &middot; {{ report.recipient_email }}</p>
+        <p class="text-slate-600 text-xs mt-0.5">{{ report.uploads.count }} file(s) &middot; {% if report.last_sent %}Last sent {{ report.last_sent|timesince }} ago{% else %}Never sent{% endif %} {% if report.next_send %}&middot; Next: {{ report.next_send|date:"M d, Y" }}{% endif %}</p>
+      </div>
+      <div class="flex items-center gap-2 flex-wrap">
+        <form method="post" action="{% url 'reports:send_now' report.id %}">{% csrf_token %}<button type="submit" class="btn-secondary text-xs py-2 px-4">Send Now</button></form>
+        <form method="post" action="{% url 'reports:toggle' report.id %}">{% csrf_token %}<button type="submit" class="btn-secondary text-xs py-2 px-3 {% if not report.is_active %}text-green-400{% else %}text-amber-400{% endif %}">{% if report.is_active %}Pause{% else %}Resume{% endif %}</button></form>
+        <form method="post" action="{% url 'reports:delete' report.id %}" onsubmit="return confirm('Delete this report?')">{% csrf_token %}<button type="submit" class="text-slate-600 hover:text-red-400 p-2 transition-colors"><svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg></button></form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="glass rounded-2xl p-16 text-center mb-10">
+    <div class="text-4xl mb-4">📬</div>
+    <p class="text-white font-semibold mb-1">No scheduled reports yet</p>
+    <p class="text-slate-400 text-sm">Create a report to receive weekly or monthly digests.</p>
+  </div>
+  {% endif %}
+
+  <div class="glass rounded-2xl p-6">
+    <p class="text-white font-semibold mb-3">Setup: Start the task worker</p>
+    <code class="text-violet-400 bg-violet-900/20 px-3 py-2 rounded-lg text-sm block">python manage.py qcluster</code>
+    <p class="text-slate-500 text-xs mt-2">Run this alongside your Django server to process scheduled reports.</p>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="new-report-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background:rgba(0,0,0,0.7);backdrop-filter:blur(4px)">
+  <div class="glass rounded-2xl p-8 w-full max-w-lg glow">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-white font-bold text-lg">Create Scheduled Report</h2>
+      <button onclick="document.getElementById('new-report-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-xl">&times;</button>
+    </div>
+    <form method="post" action="{% url 'reports:create' %}" class="space-y-4">
+      {% csrf_token %}
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Report Name</label><input type="text" name="name" placeholder="Weekly Sales Digest" required class="input-field text-sm"></div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Frequency</label><select name="frequency" class="input-field text-sm" id="freq-select" onchange="toggleDayPicker()"><option value="weekly">Weekly</option><option value="monthly">Monthly</option></select></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium" id="day-label">Day of Week</label><select name="send_day" class="input-field text-sm" id="day-select"><option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option><option value="3">Thursday</option><option value="4">Friday</option></select></div>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Hour (24h)</label><input type="number" name="send_hour" value="8" min="0" max="23" class="input-field text-sm"></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Send To</label><input type="email" name="recipient_email" value="{{ user.email }}" required class="input-field text-sm"></div>
+      </div>
+      <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Files to Include</label>
+        <div class="max-h-36 overflow-y-auto space-y-1.5 glass-sm rounded-xl p-3">
+          {% for u in uploads %}<label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="uploads" value="{{ u.id }}" class="accent-violet-600"><span class="text-slate-300 text-sm truncate">{{ u.original_name }}</span></label>
+          {% empty %}<p class="text-slate-500 text-xs text-center py-2">No analysed files yet</p>{% endfor %}
+        </div>
+      </div>
+      <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="include_ai_summary" checked class="accent-violet-600"><span class="text-slate-300 text-sm">Include AI summaries</span></label>
+      <button type="submit" class="btn-primary w-full justify-center py-3">Create Report</button>
+    </form>
+  </div>
+</div>
+<script>
+function toggleDayPicker(){const f=document.getElementById('freq-select').value,l=document.getElementById('day-label'),s=document.getElementById('day-select');if(f==='monthly'){l.textContent='Day of Month';s.innerHTML=Array.from({length:28},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');}else{l.textContent='Day of Week';s.innerHTML=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'].map((d,i)=>`<option value="${i}">${d}</option>`).join('');}}
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% load datalens_extras %}
+<div id="sec-{{ sec.id }}" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;overflow:hidden;position:relative;">
+  <!-- Section toolbar -->
+  <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.05);">
+    <span style="color:#334155;font-size:11px;cursor:grab;">⠿</span>
+    <span style="font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,.15);color:#7c3aed;text-transform:capitalize;">{{ sec.type|replace:"_" }}</span>
+    <div style="margin-left:auto;">
+      <button onclick="deleteSection('{{ sec.id }}')"
+              style="background:none;border:none;color:#475569;cursor:pointer;font-size:12px;" title="Remove section">✕</button>
+    </div>
+  </div>
+
+  <!-- Section content -->
+  <div style="padding:14px 16px;">
+    {% if sec.type == 'heading' %}
+      {% with lvl=sec.content.level|default:1 %}
+      <h{{ lvl }} style="color:#e2e8f0;margin:0;font-size:{% if lvl == 1 %}1.5rem{% elif lvl == 2 %}1.2rem{% else %}1rem{% endif %};font-weight:700;" contenteditable="true"
+          onblur="saveSectionText('{{ sec.id }}', this.textContent)">{{ sec.content.text }}</h{{ lvl }}>
+      {% endwith %}
+
+    {% elif sec.type == 'text' %}
+      <p style="color:#94a3b8;font-size:13px;line-height:1.7;margin:0;" contenteditable="true"
+         onblur="saveSectionText('{{ sec.id }}', this.textContent)">{{ sec.content.text }}</p>
+
+    {% elif sec.type == 'divider' %}
+      <hr style="border:none;border-top:1px solid rgba(255,255,255,.1);">
+
+    {% elif sec.type == 'chart' %}
+      {% if sec.chart and sec.chart_data and sec.chart_data.labels %}
+      <p style="color:#e2e8f0;font-size:12px;font-weight:600;margin:0 0 8px;">{{ sec.chart.title }}</p>
+      <div style="position:relative;height:220px;">
+        <canvas id="rpt-chart-{{ sec.id }}"></canvas>
+      </div>
+      <script>
+      (function(){
+        var raw={{ sec.chart_data|jsonify|safe }};
+        if(!raw||!raw.labels) return;
+        var ctype=raw.chart_type||'bar',isH=!!raw.is_horizontal;
+        var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[ctype]||ctype;
+        Chart.defaults.color='#94a3b8';
+        new Chart(document.getElementById('rpt-chart-{{ sec.id }}'),{
+          type:isH?'bar':jsType,
+          data:{labels:raw.labels,datasets:raw.datasets||[]},
+          options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,
+            animation:{duration:0},
+            plugins:{legend:{display:(raw.datasets||[]).length>1,labels:{color:'#94a3b8',font:{size:9},boxWidth:7}}},
+            scales:jsType!=='pie'&&jsType!=='doughnut'?{
+              x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:9},maxTicksLimit:8}},
+              y:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#64748b',font:{size:9}}}
+            }:undefined}
+        });
+      })();
+      </script>
+      {% else %}
+      <p style="color:#475569;font-size:12px;text-align:center;padding:20px;">Chart not available</p>
+      {% endif %}
+
+    {% elif sec.type == 'stats' %}
+      {% if sec.analysis %}
+      <p style="color:#a78bfa;font-size:11px;font-weight:600;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em;">Statistics — {{ sec.upload.original_name|truncatechars:40 }}</p>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <thead><tr style="border-bottom:1px solid rgba(124,58,237,.2);">
+            <th style="text-align:left;padding:6px 8px;color:#64748b;">Column</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Nulls%</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Unique</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Min</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Max</th>
+            <th style="text-align:right;padding:6px 8px;color:#64748b;">Mean</th>
+          </tr></thead>
+          <tbody>
+          {% for col in sec.analysis.columns %}
+          <tr style="border-bottom:1px solid rgba(255,255,255,.04);">
+            <td style="padding:5px 8px;color:#e2e8f0;">{{ col.name }}</td>
+            <td style="padding:5px 8px;text-align:right;color:{% if col.null_pct > 20 %}#f87171{% elif col.null_pct > 5 %}#fbbf24{% else %}#64748b{% endif %};">{{ col.null_pct }}%</td>
+            <td style="padding:5px 8px;text-align:right;color:#94a3b8;font-family:monospace;">{{ col.unique_count }}</td>
+            <td style="padding:5px 8px;text-align:right;color:#94a3b8;font-family:monospace;">{{ col.min|default:"—" }}</td>
+            <td style="padding:5px 8px;text-align:right;color:#94a3b8;font-family:monospace;">{{ col.max|default:"—" }}</td>
+            <td style="padding:5px 8px;text-align:right;color:#a78bfa;font-family:monospace;">{{ col.mean|floatformat:2|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% endif %}
+
+    {% elif sec.type == 'ai_insights' %}
+      {% if sec.upload and sec.upload.ai_insights %}
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:16px;">🤖</span>
+        <p style="color:#a78bfa;font-weight:600;font-size:12px;margin:0;">AI Insights — {{ sec.upload.original_name|truncatechars:40 }}</p>
+      </div>
+      <div style="color:#94a3b8;font-size:13px;line-height:1.7;white-space:pre-line;">{{ sec.upload.ai_insights }}</div>
+      {% else %}
+      <p style="color:#475569;font-size:12px;text-align:center;padding:16px;">AI insights not generated yet for this dataset.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

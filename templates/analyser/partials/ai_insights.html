@@ -1,0 +1,11 @@
+{% load analyser_safety %}
+{% analyser_safe_mode as analyser_safe_mode %}
+<div class="prose prose-invert prose-sm max-w-none" id="insights-content">{% if analyser_safe_mode %}Safe mode is enabled. AI insight text is hidden on local development pages.{% else %}{{ insights|safe_text }}{% endif %}</div>
+<script>
+(function() {
+  const el = document.getElementById('insights-content');
+  if (el && typeof marked !== 'undefined' && !(el.textContent || '').includes('Safe mode is enabled')) {
+    el.innerHTML = marked.parse(el.textContent || el.innerText);
+  }
+})();
+</script>

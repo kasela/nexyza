@@ -1,0 +1,175 @@
+{% extends 'app_base.html' %}
+{% block title %}Admin Dashboard — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <div class="flex items-center justify-between mb-8">
+    <div>
+      <h1 class="text-2xl font-bold text-white">Admin Dashboard</h1>
+      <p class="text-slate-500 text-sm mt-1">System overview, user management, and platform health.</p>
+    </div>
+    <div class="flex gap-2">
+      <a href="{% url 'core:admin_users' %}" class="btn-primary text-xs py-2 px-4">Manage Users</a>
+      <a href="{% url 'core:social_posts' %}" class="btn-secondary text-xs py-2 px-4">📣 Social Posts</a>
+      <a href="/admin/" class="btn-secondary text-xs py-2 px-4">Django Admin →</a>
+    </div>
+  </div>
+
+  <!-- KPI cards -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1">Total Users</p>
+      <p class="text-3xl font-bold text-white">{{ stats.total_users }}</p>
+      <p class="text-green-400 text-xs mt-1">+{{ stats.new_users_week }} this week</p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1">Pro Users</p>
+      <p class="text-3xl font-bold gradient-text">{{ stats.pro_users }}</p>
+      <p class="text-slate-500 text-xs mt-1">
+        {% if stats.total_users %}{{ stats.pro_users|floatformat:0 }}/{{ stats.total_users }} ({% widthratio stats.pro_users stats.total_users 100 %}%){% endif %}
+      </p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1">Uploads (total)</p>
+      <p class="text-3xl font-bold text-white">{{ stats.total_uploads }}</p>
+      <p class="text-slate-500 text-xs mt-1">+{{ stats.uploads_week }} this week</p>
+    </div>
+    <div class="glass rounded-xl p-5">
+      <p class="text-slate-500 text-xs mb-1">Failed Analyses</p>
+      <p class="text-3xl font-bold {% if stats.error_rate > 20 %}text-red-400{% elif stats.error_rate > 5 %}text-amber-400{% else %}text-white{% endif %}">
+        {{ stats.error_rate }}
+      </p>
+      <p class="text-slate-500 text-xs mt-1">
+        {% if stats.total_analyses %}{% widthratio stats.error_rate stats.total_analyses 100 %}% error rate{% endif %}
+      </p>
+    </div>
+  </div>
+
+  <!-- Secondary stats -->
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+    <div class="glass-sm rounded-xl px-4 py-3 flex items-center gap-3">
+      <span class="text-xl">📅</span>
+      <div>
+        <p class="text-white font-semibold text-sm">{{ stats.new_users_month }}</p>
+        <p class="text-slate-500 text-xs">New users / month</p>
+      </div>
+    </div>
+    <div class="glass-sm rounded-xl px-4 py-3 flex items-center gap-3">
+      <span class="text-xl">📊</span>
+      <div>
+        <p class="text-white font-semibold text-sm">{{ stats.uploads_month }}</p>
+        <p class="text-slate-500 text-xs">Uploads / month</p>
+      </div>
+    </div>
+    <div class="glass-sm rounded-xl px-4 py-3 flex items-center gap-3">
+      <span class="text-xl">✅</span>
+      <div>
+        <p class="text-white font-semibold text-sm">{{ stats.total_analyses }}</p>
+        <p class="text-slate-500 text-xs">Successful analyses</p>
+      </div>
+    </div>
+    <div class="glass-sm rounded-xl px-4 py-3 flex items-center gap-3">
+      <span class="text-xl">💹</span>
+      <div>
+        <p class="text-white font-semibold text-sm">
+          {% if stats.total_users and stats.pro_users %}
+            {% widthratio stats.pro_users stats.total_users 100 %}%
+          {% else %}0%{% endif %}
+        </p>
+        <p class="text-slate-500 text-xs">Conversion rate</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- Top users -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-violet-900/20 flex items-center justify-between">
+        <p class="text-white font-semibold">Top Users by Uploads</p>
+        <a href="{% url 'core:admin_users' %}" class="text-violet-400 text-xs hover:text-violet-300">View all →</a>
+      </div>
+      <div class="divide-y divide-slate-800/40">
+        {% for user in top_users %}
+        <div class="px-5 py-3 flex items-center gap-3 hover:bg-violet-900/10 transition-colors">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0"
+               style="background:linear-gradient(135deg,#7c3aed,#3b82f6);">
+            {{ user.email|first|upper }}
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="text-white text-sm truncate">{{ user.email }}</p>
+            <p class="text-slate-500 text-xs">{{ user.uc }} upload{{ user.uc|pluralize }}</p>
+          </div>
+          {% if user.is_pro %}<span class="text-xs px-2 py-0.5 rounded-full bg-violet-900/30 text-violet-300">PRO</span>{% endif %}
+          <a href="{% url 'core:admin_user_detail' user.id %}"
+             class="text-slate-600 hover:text-violet-300 text-xs transition-colors">→</a>
+        </div>
+        {% empty %}
+        <div class="px-5 py-8 text-center text-slate-500 text-sm">No users yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recent activity -->
+    <div class="glass rounded-2xl overflow-hidden">
+      <div class="px-5 py-4 border-b border-violet-900/20 flex items-center justify-between">
+        <p class="text-white font-semibold">Recent Activity</p>
+        <a href="{% url 'audit:log' %}" class="text-violet-400 text-xs hover:text-violet-300">Full log →</a>
+      </div>
+      <div class="divide-y divide-slate-800/40">
+        {% for ev in stats.recent_events %}
+        <div class="px-5 py-2.5 flex items-center gap-3">
+          <span class="text-xs px-2 py-0.5 rounded-full shrink-0
+            {% if ev.action == 'upload' %}bg-green-900/30 text-green-400
+            {% elif ev.action == 'export' %}bg-blue-900/30 text-blue-400
+            {% elif ev.action == 'delete' %}bg-red-900/30 text-red-400
+            {% elif ev.action == 'nlq' or ev.action == 'ai_query' %}bg-violet-900/30 text-violet-400
+            {% elif ev.action == 'login' %}bg-amber-900/30 text-amber-400
+            {% else %}bg-slate-800 text-slate-400{% endif %}">
+            {{ ev.get_action_display }}
+          </span>
+          <p class="text-slate-300 text-xs truncate flex-1">{{ ev.user.email|default:"—" }}</p>
+          <p class="text-slate-600 text-xs shrink-0 font-mono">{{ ev.timestamp|date:"H:i" }}</p>
+        </div>
+        {% empty %}
+        <div class="px-5 py-8 text-center text-slate-500 text-sm">No activity yet.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Upload trend chart -->
+  {% if stats.daily_uploads %}
+  <div class="glass rounded-2xl p-6 mt-6">
+    <p class="text-white font-semibold mb-4">Uploads — Last 30 Days</p>
+    <div style="position:relative;height:120px;">
+      <canvas id="admin-uploads-chart"></canvas>
+    </div>
+    <script>
+    (function(){
+      var data = {{ stats.daily_uploads|safe }};
+      new Chart(document.getElementById('admin-uploads-chart'), {
+        type:'line',
+        data:{
+          labels: data.map(function(d){return d.date;}),
+          datasets:[{
+            data: data.map(function(d){return d.count;}),
+            borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,0.08)',
+            fill:true, tension:0.4, pointRadius:2, borderWidth:2,
+          }]
+        },
+        options:{
+          responsive:true, maintainAspectRatio:false,
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10}}},
+            y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#64748b',font:{size:10}},beginAtZero:true}
+          }
+        }
+      });
+    })();
+    </script>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+<div id="share-panel">
+{% if share_ui.can_open_shared %}
+  <div class="space-y-3">
+    <div class="flex items-center gap-2">
+      <input type="text" readonly
+             value="{{ share_ui.share_url }}"
+             class="input-field text-xs font-mono flex-1" id="share-url-input">
+      <button onclick="copyShareUrl()" class="btn-secondary text-xs py-2 px-3 shrink-0">Copy</button>
+    </div>
+    <p class="text-slate-500 text-xs">
+      Expires: {{ upload.share_expires|date:"M d, Y" }}
+    </p>
+    <form method="post" action="{% url 'analyser:share' upload.id %}"
+          hx-post="{% url 'analyser:share' upload.id %}"
+          hx-target="#share-panel">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="disable">
+      <button type="submit" class="text-red-400 text-xs hover:text-red-300 transition-colors">
+        Disable share link
+      </button>
+    </form>
+  </div>
+{% else %}
+  <form method="post" action="{% url 'analyser:share' upload.id %}"
+        hx-post="{% url 'analyser:share' upload.id %}"
+        hx-target="#share-panel">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="enable">
+    <div class="flex items-center gap-3 mb-3">
+      <label class="text-slate-400 text-xs">Expires in:</label>
+      <select name="days" class="input-field text-xs py-1.5 w-32">
+        <option value="7">7 days</option>
+        <option value="30" selected>30 days</option>
+        <option value="90">90 days</option>
+        <option value="365">1 year</option>
+      </select>
+    </div>
+    <button type="submit" class="btn-primary text-xs py-2 px-4">
+      Generate Share Link
+    </button>
+  </form>
+{% endif %}
+  {% if share_ui.can_open_shared %}
+  <div class="mt-4 pt-4 border-t border-violet-900/20">
+    <p class="text-slate-400 text-xs font-medium mb-2">Embed Charts</p>
+    <p class="text-slate-500 text-xs mb-2">Copy this iframe snippet to embed your charts anywhere:</p>
+    <div class="glass-sm rounded-lg p-3 font-mono text-xs text-violet-300 break-all" id="embed-snippet">
+      {{ share_ui.embed_snippet }}
+    </div>
+    <button onclick="copyEmbed()" class="btn-secondary text-xs py-1.5 px-3 mt-2">Copy Snippet</button>
+  </div>
+  {% endif %}
+</div>
+<script>
+function copyEmbed() {
+  const el = document.getElementById('embed-snippet');
+  if (el) navigator.clipboard.writeText(el.textContent.trim());
+}
+
+function copyShareUrl() {
+  const inp = document.getElementById('share-url-input');
+  if (inp) {
+    navigator.clipboard.writeText(inp.value);
+    inp.select();
+  }
+}
+</script>

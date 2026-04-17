@@ -1,0 +1,69 @@
+{% extends 'app_base.html' %}
+{% block title %}Anomaly Report — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:28px 20px 60px;">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px;">
+    <div>
+      <div style="font-size:11px;color:#475569;margin-bottom:6px;">
+        <a href="{% url 'dashboard:index' %}" style="color:#475569;text-decoration:none;">Dashboard</a> ›
+        <a href="{% url 'analyser:result' upload.id %}" style="color:#475569;text-decoration:none;">{{ upload.original_name|truncatechars:30 }}</a> ›
+        <span style="color:#94a3b8;">Anomaly Report</span>
+      </div>
+      <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;">🔍 Anomaly Detection</h1>
+      <p style="color:#64748b;font-size:13px;margin:4px 0 0;">{{ upload.original_name }} · {{ upload.row_count|default:0 }} rows</p>
+    </div>
+    <form method="post" action="{% url 'anomaly:run' upload.id %}" id="run-form">
+      {% csrf_token %}
+      <button type="submit" class="btn-primary" style="padding:9px 20px;font-size:13px;"
+              hx-post="{% url 'anomaly:run' upload.id %}"
+              hx-target="#findings-container"
+              hx-indicator="#scan-spin">
+        <span id="scan-spin" class="htmx-indicator">
+          <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+        </span>
+        🔍 Run Detection
+      </button>
+    </form>
+  </div>
+
+  {% if report %}
+  <!-- Summary banner -->
+  {% with findings=report.findings %}
+  {% with high=findings|length %}
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+    {% with hc=0 mc=0 lc=0 %}
+    <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:12px;padding:14px 16px;">
+      <p style="color:#f87171;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">High Severity</p>
+      <p style="color:#fff;font-size:1.8rem;font-weight:700;margin:0;">{{ report.findings|length }}</p>
+    </div>
+    {% endwith %}
+    <div style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px 16px;">
+      <p style="color:#fbbf24;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Total Issues</p>
+      <p style="color:#fff;font-size:1.8rem;font-weight:700;margin:0;">{{ report.findings|length }}</p>
+    </div>
+    <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px 16px;">
+      <p style="color:#34d399;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Columns Scanned</p>
+      <p style="color:#fff;font-size:1.8rem;font-weight:700;margin:0;">{{ upload.column_count|default:0 }}</p>
+    </div>
+    <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:12px;padding:14px 16px;">
+      <p style="color:#a78bfa;font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 4px;">Last Scan</p>
+      <p style="color:#fff;font-size:12px;font-weight:600;margin:0;">{{ report.generated_at|timesince }} ago</p>
+    </div>
+  </div>
+  {% endwith %}{% endwith %}
+  {% endif %}
+
+  <div id="findings-container">
+    {% if report %}{% include 'anomaly/partials/findings.html' %}
+    {% else %}
+    <div style="text-align:center;padding:60px 20px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);border-radius:16px;">
+      <div style="font-size:3rem;margin-bottom:12px;">🔍</div>
+      <p style="color:#e2e8f0;font-weight:600;margin-bottom:8px;">No scan run yet</p>
+      <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Run detection to find outliers, missing data, distribution issues, and more.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

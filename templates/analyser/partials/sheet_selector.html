@@ -1,0 +1,17 @@
+{% if upload.available_sheets|length > 1 %}
+<div class="flex items-center gap-2 flex-wrap">
+  <span class="text-slate-500 text-xs">Sheet:</span>
+  {% for sheet in upload.available_sheets %}
+  <form method="post" action="{% url 'analyser:switch_sheet' upload.id %}" class="inline">
+    {% csrf_token %}
+    <input type="hidden" name="sheet_name" value="{{ sheet }}">
+    <button type="submit"
+            class="px-3 py-1 rounded-lg text-xs font-medium transition-all
+                   {% if sheet == upload.active_sheet %}bg-violet-600 text-white{% else %}glass-sm text-slate-400 hover:text-violet-300{% endif %}"
+            {% if sheet == upload.active_sheet %}disabled{% endif %}>
+      {{ sheet }}
+    </button>
+  </form>
+  {% endfor %}
+</div>
+{% endif %}

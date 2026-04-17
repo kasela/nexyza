@@ -1,0 +1,34 @@
+{% load chart_tags %}
+{% chart_payload upload chart as d %}
+<div class="rounded-3xl border border-white/10 bg-white/[0.03] shadow-2xl shadow-violet-950/10 overflow-hidden">
+  <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+    <div>
+      <h3 class="text-sm font-semibold text-white">{{ chart.title }}</h3>
+      <p class="text-[11px] text-slate-400">{{ chart.get_chart_type_display }} · {{ chart.get_aggregation_display }}</p>
+    </div>
+    <div class="text-[11px] text-slate-500">Board block</div>
+  </div>
+  <div class="p-5">
+    {% include 'analyser/charts/partials/chart_card.html' with chart=chart upload=upload only %}
+    {% if d.insight_summary or d.insight_driver or d.insight_risk or d.insight_next_step %}
+    <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div class="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+        <div class="text-[11px] uppercase tracking-[0.22em] text-slate-500 mb-2">Summary</div>
+        <p class="text-sm text-slate-200">{{ d.insight_summary|default:'No summary available.' }}</p>
+      </div>
+      <div class="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+        <div class="text-[11px] uppercase tracking-[0.22em] text-slate-500 mb-2">Driver</div>
+        <p class="text-sm text-slate-200">{{ d.insight_driver|default:'No driver detected.' }}</p>
+      </div>
+      <div class="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+        <div class="text-[11px] uppercase tracking-[0.22em] text-slate-500 mb-2">Risk</div>
+        <p class="text-sm text-slate-200">{{ d.insight_risk|default:'No major risk noted.' }}</p>
+      </div>
+      <div class="rounded-2xl bg-white/[0.03] border border-white/10 p-3">
+        <div class="text-[11px] uppercase tracking-[0.22em] text-slate-500 mb-2">Next step</div>
+        <p class="text-sm text-slate-200">{{ d.insight_next_step|default:'Compare this chart with target or prior period.' }}</p>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>

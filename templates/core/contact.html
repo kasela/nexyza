@@ -1,0 +1,130 @@
+{% extends 'public_base.html' %}
+{% block title %}Contact Us — Nexyza{% endblock %}
+{% block content %}
+<div style="max-width:960px;margin:0 auto;padding:60px 20px 80px;">
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:56px;">
+    <div style="display:inline-block;background:rgba(124,58,237,.15);border:1px solid rgba(124,58,237,.3);border-radius:999px;padding:6px 20px;font-size:13px;color:#a78bfa;margin-bottom:20px;">We'd love to hear from you</div>
+    <h1 style="font-size:2.8rem;font-weight:800;color:#fff;margin:0 0 14px;line-height:1.1;">Get in touch</h1>
+    <p style="color:#94a3b8;font-size:1.1rem;max-width:480px;margin:0 auto;">Questions, feedback, partnerships, or just a hello — we read every message and reply within 24 hours.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;">
+
+    <!-- Contact form -->
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(124,58,237,.15);border-radius:20px;padding:32px;">
+      {% if sent %}
+      <div style="text-align:center;padding:24px 0;">
+        <div style="font-size:3rem;margin-bottom:14px;">✅</div>
+        <p style="color:#34d399;font-weight:700;font-size:1.1rem;margin:0 0 8px;">Message sent!</p>
+        <p style="color:#64748b;font-size:13px;margin:0;">We'll get back to you at <strong style="color:#94a3b8;">{{ sent_email }}</strong> within 24 hours.</p>
+        <a href="/contact/" style="display:inline-block;margin-top:20px;color:#a78bfa;font-size:13px;text-decoration:none;" onmouseover="this.style.color='#c4b5fd'" onmouseout="this.style.color='#a78bfa'">← Send another message</a>
+      </div>
+      {% else %}
+      <h2 style="color:#fff;font-weight:700;font-size:1.1rem;margin:0 0 22px;">Send us a message</h2>
+
+      {% if error %}
+      <div style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px 14px;margin-bottom:16px;color:#f87171;font-size:13px;">{{ error }}</div>
+      {% endif %}
+
+      <form method="post" action="/contact/">
+        {% csrf_token %}
+        <div style="margin-bottom:14px;">
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Name *</label>
+          <input type="text" name="name" required value="{{ form_data.name|default:'' }}" placeholder="Your name"
+                 style="width:100%;padding:10px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;transition:.15s;"
+                 onfocus="this.style.borderColor='rgba(124,58,237,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Email *</label>
+          <input type="email" name="email" required value="{{ form_data.email|default:'' }}" placeholder="you@example.com"
+                 style="width:100%;padding:10px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;box-sizing:border-box;transition:.15s;"
+                 onfocus="this.style.borderColor='rgba(124,58,237,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Subject</label>
+          <select name="subject"
+                  style="width:100%;padding:10px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;transition:.15s;"
+                  onfocus="this.style.borderColor='rgba(124,58,237,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">
+            <option value="general">General question</option>
+            <option value="support">Technical support</option>
+            <option value="billing">Billing &amp; plans</option>
+            <option value="feature">Feature request</option>
+            <option value="partnership">Partnership / Enterprise</option>
+            <option value="bug">Report a bug</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div style="margin-bottom:20px;">
+          <label style="color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Message *</label>
+          <textarea name="message" required rows="5" placeholder="Tell us how we can help…"
+                    style="width:100%;padding:10px 13px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:#e2e8f0;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;font-family:inherit;transition:.15s;"
+                    onfocus="this.style.borderColor='rgba(124,58,237,.5)'" onblur="this.style.borderColor='rgba(255,255,255,.1)'">{{ form_data.message|default:'' }}</textarea>
+        </div>
+        <button type="submit"
+                style="width:100%;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c3aed,#3b82f6);color:#fff;font-size:14px;font-weight:700;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.3);transition:.2s;"
+                onmouseover="this.style.boxShadow='0 6px 28px rgba(124,58,237,.5)';this.style.transform='translateY(-1px)'"
+                onmouseout="this.style.boxShadow='0 4px 20px rgba(124,58,237,.3)';this.style.transform='translateY(0)'">
+          Send Message →
+        </button>
+      </form>
+      {% endif %}
+    </div>
+
+    <!-- Contact info + FAQ -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- Direct email -->
+      <div style="background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:16px;padding:22px 24px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;">
+          <div style="width:36px;height:36px;border-radius:9px;background:rgba(124,58,237,.2);display:flex;align-items:center;justify-content:center;font-size:16px;">✉️</div>
+          <p style="color:#a78bfa;font-weight:700;font-size:14px;margin:0;">Email directly</p>
+        </div>
+        <a href="mailto:hello@nexyza.com" style="color:#e2e8f0;font-size:1.1rem;font-weight:600;text-decoration:none;display:block;"
+           onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#e2e8f0'">hello@nexyza.com</a>
+        <p style="color:#64748b;font-size:12px;margin:6px 0 0;">We reply within 24 hours on business days</p>
+      </div>
+
+      <!-- Response time -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 24px;">
+        <p style="color:#e2e8f0;font-weight:600;font-size:14px;margin:0 0 14px;">What to expect</p>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#34d399;font-size:14px;margin-top:1px;flex-shrink:0;">✓</span>
+            <div>
+              <p style="color:#94a3b8;font-size:13px;margin:0;font-weight:500;">Fast replies</p>
+              <p style="color:#475569;font-size:12px;margin:2px 0 0;">Support questions answered within 24h, usually much faster</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#34d399;font-size:14px;margin-top:1px;flex-shrink:0;">✓</span>
+            <div>
+              <p style="color:#94a3b8;font-size:13px;margin:0;font-weight:500;">Real humans</p>
+              <p style="color:#475569;font-size:12px;margin:2px 0 0;">Every message is read and replied to by a real person</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="color:#34d399;font-size:14px;margin-top:1px;flex-shrink:0;">✓</span>
+            <div>
+              <p style="color:#94a3b8;font-size:13px;margin:0;font-weight:500;">Feature requests welcome</p>
+              <p style="color:#475569;font-size:12px;margin:2px 0 0;">We actively shape the product based on user feedback</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Common topics -->
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:22px 24px;">
+        <p style="color:#e2e8f0;font-weight:600;font-size:14px;margin:0 0 14px;">Common topics</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+<a href="/billing/pricing/" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);color:#94a3b8;text-decoration:none;font-size:13px;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#94a3b8'">Billing &amp; plans <span>→</span></a>
+          <a href="/api/v1/keys/" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);color:#94a3b8;text-decoration:none;font-size:13px;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#94a3b8'">API access <span>→</span></a>
+          <a href="/terms/" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);color:#94a3b8;text-decoration:none;font-size:13px;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#94a3b8'">Terms of Service <span>→</span></a>
+          <a href="/privacy/" style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;color:#94a3b8;text-decoration:none;font-size:13px;" onmouseover="this.style.color='#a78bfa'" onmouseout="this.style.color='#94a3b8'">Privacy Policy <span>→</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

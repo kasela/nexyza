@@ -1,0 +1,58 @@
+{% extends 'app_base.html' %}
+{% block title %}{{ asset.name }} — Catalog{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div><a href="{% url 'catalog:home' %}" class="text-slate-500 hover:text-slate-300 text-xs">← Catalog</a><h1 class="text-2xl font-bold text-white mt-1">{{ asset.name }}</h1></div>
+    <a href="{% url 'analyser:result' asset.upload.id %}" class="btn-primary text-sm py-2.5 px-5">View Analysis →</a>
+  </div>
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2 glass rounded-2xl p-6">
+      <form method="post" action="{% url 'catalog:update' asset.id %}" class="space-y-4">{% csrf_token %}
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Name</label><input type="text" name="name" value="{{ asset.name }}" class="input-field text-sm"></div>
+          <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Domain</label><input type="text" name="domain" value="{{ asset.domain }}" placeholder="Finance, Marketing…" class="input-field text-sm"></div>
+        </div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Description</label><textarea name="description" rows="3" class="input-field text-sm">{{ asset.description }}</textarea></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Tags (comma-separated)</label><input type="text" name="tags" value="{{ asset.tags }}" placeholder="sales, 2024, regional" class="input-field text-sm"></div>
+        <div><label class="block text-slate-400 text-xs mb-1.5 font-medium">Refresh Frequency</label><input type="text" name="refresh_frequency" value="{{ asset.refresh_frequency }}" placeholder="Daily, Weekly…" class="input-field text-sm"></div>
+        <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" name="is_sensitive" {% if asset.is_sensitive %}checked{% endif %} class="accent-violet-600"><span class="text-slate-300 text-sm">Contains sensitive / PII data</span></label>
+        <button type="submit" class="btn-primary py-2.5 px-6">Save</button>
+      </form>
+    </div>
+    <div class="space-y-4">
+      <div class="glass rounded-xl p-4">
+        <p class="text-white font-semibold text-sm mb-3">Quality Score</p>
+        <div class="text-center"><p class="text-4xl font-bold {% if asset.quality_score >= 70 %}text-green-400{% elif asset.quality_score >= 40 %}text-amber-400{% else %}text-red-400{% endif %}">{{ asset.quality_score|floatformat:0|default:"—" }}</p><p class="text-slate-500 text-xs mt-1">out of 100</p></div>
+        <div class="h-2 bg-slate-800 rounded-full overflow-hidden mt-3"><div class="h-full rounded-full {% if asset.quality_score >= 70 %}bg-green-500{% elif asset.quality_score >= 40 %}bg-amber-500{% else %}bg-red-500{% endif %}" style="width:{{ asset.quality_score|default:0 }}%"></div></div>
+      </div>
+      {% if inputs or outputs %}
+      <div class="glass rounded-xl p-4">
+        <p class="text-white font-semibold text-sm mb-3">Data Lineage</p>
+        {% if inputs %}<p class="text-slate-500 text-xs font-medium mb-2 uppercase tracking-wider">Derived from</p>
+        {% for e in inputs %}<div class="flex items-center gap-2 mb-1.5"><span class="text-xs px-2 py-0.5 glass-sm rounded text-slate-400">{{ e.get_transform_display }}</span><p class="text-slate-300 text-xs truncate">{{ e.source.original_name }}</p></div>{% endfor %}{% endif %}
+        {% if outputs %}<p class="text-slate-500 text-xs font-medium mb-2 mt-3 uppercase tracking-wider">Used in</p>
+        {% for e in outputs %}<div class="flex items-center gap-2 mb-1.5"><span class="text-xs px-2 py-0.5 glass-sm rounded text-slate-400">{{ e.get_transform_display }}</span><p class="text-slate-300 text-xs truncate">{{ e.destination.original_name }}</p></div>{% endfor %}{% endif %}
+      </div>{% endif %}
+    </div>
+              <!-- Column preview -->
+      <div class="glass rounded-xl p-4">
+        <p class="text-white font-semibold text-sm mb-3">Columns ({{ asset.upload.column_count }})</p>
+        <div class="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+          {% for col in asset.upload.analysis_result.columns|default:'' %}
+          <div class="flex items-center justify-between gap-2 text-xs">
+            <span class="text-slate-300 font-mono truncate">{{ col.name }}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-slate-600">{% if col.is_numeric %}num{% else %}text{% endif %}</span>
+              {% if col.null_pct > 0 %}
+              <span class="{% if col.null_pct > 20 %}text-red-400{% else %}text-amber-400{% endif %}">
+                {{ col.null_pct|floatformat:0 }}% null
+              </span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+</div>
+</div>{% endblock %}

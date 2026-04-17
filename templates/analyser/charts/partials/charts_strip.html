@@ -1,0 +1,71 @@
+{% load datalens_extras %}
+{% if charts %}
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-5" id="kpi-strip">
+  {% for chart in charts %}
+  {% if chart.chart_type == 'kpi' %}
+  {% with d=chart.cached_data %}
+  <div class="glass rounded-xl p-4 text-center">
+    <p class="text-slate-500 text-xs mb-1 truncate">{{ chart.title }}</p>
+    <p class="text-2xl font-bold text-white">{{ d.value|default:"–" }}</p>
+    {% if d.sparkline %}
+    <canvas id="kpi-spark-{{ chart.id }}" height="28" class="w-full mt-1.5"></canvas>
+    <script>(function(){
+      const d = {{ d.sparkline|safe }};
+      new Chart(document.getElementById('kpi-spark-{{ chart.id }}'),{
+        type:'bar',data:{labels:d.map((_,i)=>i),datasets:[{data:d,backgroundColor:'rgba(139,92,246,0.45)',borderRadius:2}]},
+        options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}},maintainAspectRatio:false}
+      });
+    })();</script>
+    {% endif %}
+  </div>
+  {% endwith %}
+  {% endif %}
+  {% endfor %}
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+  {% for chart in charts %}
+  {% if chart.chart_type != 'kpi' and chart.chart_type != 'heatmap' and forloop.counter <= 6 %}
+  {% with d=chart.cached_data %}
+  {% if d and not d.error and d.labels %}
+  <div class="glass rounded-xl p-4">
+    <p class="text-white text-sm font-semibold mb-3 truncate">{{ chart.title }}</p>
+    <div style="position:relative;height:180px;">
+      <canvas id="strip-chart-{{ chart.id }}"></canvas>
+    </div>
+    <script>(function(){
+      const raw = {{ d|jsonify|safe }};
+      const t = (raw.chart_type==='area'||raw.chart_type==='horizontal_bar')?'bar':(raw.chart_type||'bar');
+      Chart.defaults.color='#94a3b8';
+      new Chart(document.getElementById('strip-chart-{{ chart.id }}'),{
+        type:t,data:{labels:raw.labels,datasets:raw.datasets},
+        options:{responsive:true,maintainAspectRatio:false,
+          indexAxis:raw.chart_type==='horizontal_bar'?'y':'x',
+          plugins:{legend:{display:(raw.datasets||[]).length>1,labels:{color:'#94a3b8',font:{size:10},boxWidth:8}}},
+          scales:(t!=='pie'&&t!=='doughnut')?{
+            x:{grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#64748b',font:{size:10},maxTicksLimit:8}},
+            y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:10}}},
+          }:undefined}
+      });
+    })();</script>
+  </div>
+  {% endif %}
+  {% endwith %}
+  {% endif %}
+  {% endfor %}
+</div>
+
+<div class="text-center">
+  <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-primary py-2.5 px-8 text-sm">
+    View All {{ charts|length }} Charts →
+  </a>
+</div>
+{% else %}
+<div class="text-center py-10">
+  <div class="text-4xl mb-3">📊</div>
+  <p class="text-slate-400 text-sm mb-5">No charts generated yet.</p>
+  <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-primary py-2.5 px-8">
+    Open Chart Gallery →
+  </a>
+</div>
+{% endif %}

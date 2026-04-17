@@ -1,0 +1,137 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% block title %}Data Profile — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="max-w-7xl mx-auto px-6 py-7 space-y-6">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+    <div>
+      <div class="text-xs text-slate-500 mb-2"><a href="{% url 'dashboard:index' %}" class="hover:text-slate-300">Dashboard</a> › <a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">{{ upload.original_name|truncatechars:40 }}</a> › Data Profile</div>
+      <h1 class="text-2xl font-bold text-white">Advanced Data Profile</h1>
+      <p class="text-slate-400 text-sm mt-1 max-w-3xl">AI-enriched dataset metadata for dashboard building, KPI logic, filter design, semantic understanding, and JSON export.</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a href="{% url 'analyser:result' upload.id %}" class="btn-secondary text-sm py-2.5 px-4">← Back to Dataset</a>
+      <a href="{% url 'analyser:dataset_profile_download' upload.id %}" class="btn-primary text-sm py-2.5 px-4">↓ Download JSON</a>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="glass rounded-2xl p-5"><p class="text-slate-500 text-xs mb-1">Rows</p><p class="text-3xl font-bold text-white">{{ profile_json.row_count|default:0 }}</p></div>
+    <div class="glass rounded-2xl p-5"><p class="text-slate-500 text-xs mb-1">Columns</p><p class="text-3xl font-bold text-white">{{ profile_json.column_count|default:0 }}</p></div>
+    <div class="glass rounded-2xl p-5"><p class="text-slate-500 text-xs mb-1">Profile Source</p><p class="text-lg font-semibold text-white">{{ advanced_profile.source|default:'deterministic_fallback' }}</p></div>
+    <div class="glass rounded-2xl p-5"><p class="text-slate-500 text-xs mb-1">Dataset Type</p><p class="text-lg font-semibold text-white">{{ advanced_profile.semantic_layer.dataset_type|default:screening_profile.screening_json.semantic_dataset_type|default:'General' }}</p></div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <div class="xl:col-span-2 space-y-6">
+      <div class="glass rounded-2xl p-5">
+        <div class="flex items-center justify-between gap-3 mb-4">
+          <h2 class="text-lg font-semibold text-white">Executive Summary</h2>
+          <span class="text-xs rounded-full px-3 py-1 border border-violet-500/20 bg-violet-500/10 text-violet-300">AI profile</span>
+        </div>
+        <div class="space-y-3">
+          {% for item in advanced_profile.executive_summary %}
+            <div class="rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm text-slate-200">{{ item }}</div>
+          {% empty %}
+            <div class="text-sm text-slate-400">No executive summary generated yet.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="text-white font-semibold mb-4">Dashboard Blueprint</h3>
+          <div class="space-y-4 text-sm">
+            <div><div class="text-slate-500 mb-1">Primary KPI fields</div><div class="flex flex-wrap gap-2">{% for item in advanced_profile.dashboard_blueprint.primary_kpis %}<span class="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300">{{ item }}</span>{% empty %}<span class="text-slate-500">No KPI recommendations</span>{% endfor %}</div></div>
+            <div><div class="text-slate-500 mb-1">Primary filters</div><div class="flex flex-wrap gap-2">{% for item in advanced_profile.dashboard_blueprint.primary_filters %}<span class="px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300">{{ item }}</span>{% empty %}<span class="text-slate-500">No filter recommendations</span>{% endfor %}</div></div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div class="rounded-xl bg-white/5 border border-white/5 px-3 py-3"><div class="text-slate-500 text-xs">Time axis</div><div class="text-white font-medium mt-1">{{ advanced_profile.dashboard_blueprint.time_axis|default:'—' }}</div></div>
+              <div class="rounded-xl bg-white/5 border border-white/5 px-3 py-3"><div class="text-slate-500 text-xs">Primary dimension</div><div class="text-white font-medium mt-1">{{ advanced_profile.dashboard_blueprint.primary_dimension|default:'—' }}</div></div>
+              <div class="rounded-xl bg-white/5 border border-white/5 px-3 py-3"><div class="text-slate-500 text-xs">Primary measure</div><div class="text-white font-medium mt-1">{{ advanced_profile.dashboard_blueprint.primary_measure|default:'—' }}</div></div>
+              <div class="rounded-xl bg-white/5 border border-white/5 px-3 py-3"><div class="text-slate-500 text-xs">Target measure</div><div class="text-white font-medium mt-1">{{ advanced_profile.dashboard_blueprint.target_measure|default:'—' }}</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h3 class="text-white font-semibold mb-4">Quality Assessment</h3>
+          <div class="space-y-4 text-sm">
+            <div>
+              <div class="text-slate-500 mb-2">Flags</div>
+              <div class="flex flex-wrap gap-2">{% for item in advanced_profile.quality_assessment.flags %}<span class="px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-300">{{ item }}</span>{% empty %}<span class="text-slate-500">No major flags</span>{% endfor %}</div>
+            </div>
+            <div>
+              <div class="text-slate-500 mb-2">High null columns</div>
+              <div class="flex flex-wrap gap-2">{% for item in advanced_profile.quality_assessment.high_null_columns %}<span class="px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-300">{{ item }}</span>{% empty %}<span class="text-slate-500">None detected</span>{% endfor %}</div>
+            </div>
+            <div>
+              <div class="text-slate-500 mb-2">High-cardinality dimensions</div>
+              <div class="flex flex-wrap gap-2">{% for item in advanced_profile.quality_assessment.high_cardinality_dimensions %}<span class="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">{{ item }}</span>{% empty %}<span class="text-slate-500">None detected</span>{% endfor %}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="glass rounded-2xl p-5">
+          <h3 class="text-white font-semibold mb-4">Measure Catalog</h3>
+          <div class="space-y-3 max-h-[28rem] overflow-auto pr-1">
+            {% for item in advanced_profile.measure_catalog %}
+              <div class="rounded-xl border border-white/5 bg-white/5 px-4 py-3">
+                <div class="flex items-center justify-between gap-3"><div class="text-white font-medium">{{ item.name }}</div><div class="text-xs text-slate-400">{{ item.semantic_type|default:item.business_role|default:'measure' }}</div></div>
+                {% if item.notes %}<div class="text-sm text-slate-400 mt-1">{{ item.notes }}</div>{% endif %}
+              </div>
+            {% empty %}
+              <div class="text-sm text-slate-500">No measures detected.</div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="glass rounded-2xl p-5">
+          <h3 class="text-white font-semibold mb-4">Dimension Catalog</h3>
+          <div class="space-y-3 max-h-[28rem] overflow-auto pr-1">
+            {% for item in advanced_profile.dimension_catalog %}
+              <div class="rounded-xl border border-white/5 bg-white/5 px-4 py-3">
+                <div class="flex items-center justify-between gap-3"><div class="text-white font-medium">{{ item.name }}</div><div class="text-xs text-slate-400">{{ item.cardinality|default:item.semantic_type|default:'dimension' }}</div></div>
+                {% if item.notes %}<div class="text-sm text-slate-400 mt-1">{{ item.notes }}</div>{% endif %}
+              </div>
+            {% empty %}
+              <div class="text-sm text-slate-500">No dimensions detected.</div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="space-y-6">
+      <div class="glass rounded-2xl p-5">
+        <h3 class="text-white font-semibold mb-4">Decision Questions</h3>
+        <div class="space-y-3 text-sm">
+          {% for item in advanced_profile.dashboard_blueprint.decision_questions %}
+            <div class="rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-slate-200">{{ item }}</div>
+          {% empty %}
+            <div class="text-slate-500">No decision questions generated.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5">
+        <h3 class="text-white font-semibold mb-4">Recommended Story</h3>
+        <div class="space-y-3 text-sm">
+          {% for item in advanced_profile.dashboard_blueprint.recommended_story %}
+            <div class="rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-slate-200">{{ item }}</div>
+          {% empty %}
+            <div class="text-slate-500">No story recommendations generated.</div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="glass rounded-2xl p-5">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <h3 class="text-white font-semibold">JSON Preview</h3>
+          <a href="{% url 'analyser:dataset_profile_download' upload.id %}" class="text-xs text-violet-300 hover:text-violet-200">Download</a>
+        </div>
+        <pre class="text-[11px] leading-5 text-slate-300 whitespace-pre-wrap max-h-[34rem] overflow-auto">{{ advanced_profile_pretty }}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

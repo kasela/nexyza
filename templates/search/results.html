@@ -1,0 +1,57 @@
+{% extends 'app_base.html' %}
+{% block title %}Search — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-6 py-8">
+  <h1 class="text-2xl font-bold text-white mb-6">Search</h1>
+  <form method="get" class="flex gap-3 mb-8">
+    <input type="text" name="q" value="{{ query }}" autofocus placeholder="Search files, columns, charts, insights…"
+           class="input-field text-sm flex-1 text-base py-3">
+    <button type="submit" class="btn-primary py-3 px-6">Search</button>
+  </form>
+  {% if query %}
+    {% if total %}
+    <p class="text-slate-500 text-sm mb-5">{{ total }} result{{ total|pluralize }} for "<strong class="text-slate-300">{{ query }}</strong>"</p>
+    {% for type, items in groups.items %}
+    <div class="mb-7">
+      <p class="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">
+        {% if type == 'file' %}📊 Files
+        {% elif type == 'chart' %}📈 Charts
+        {% elif type == 'column' %}🔍 Columns
+        {% elif type == 'nlq' %}💬 NLQ History
+        {% elif type == 'report' %}📑 Reports
+        {% elif type == 'catalog' %}📚 Catalog
+        {% else %}{{ type|title }}{% endif %}
+        <span class="text-slate-600 font-normal">({{ items|length }})</span>
+      </p>
+      <div class="space-y-2">
+        {% for r in items %}
+        <a href="{{ r.url }}" class="glass rounded-xl p-4 flex items-start gap-4 hover:glow transition-all group block">
+          <span class="text-xl shrink-0">{{ r.icon }}</span>
+          <div class="flex-1 min-w-0">
+            <p class="text-white font-medium group-hover:text-violet-300 transition-colors">{{ r.title }}</p>
+            <p class="text-slate-500 text-xs mt-0.5">{{ r.subtitle }}</p>
+            {% if r.snippet %}
+            <p class="text-slate-400 text-xs mt-1.5 leading-relaxed">{{ r.snippet }}</p>
+            {% endif %}
+          </div>
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#64748b" stroke-width="2" class="shrink-0 mt-1 group-hover:stroke-violet-400"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5"/></svg>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="glass rounded-2xl p-16 text-center">
+      <div class="text-4xl mb-4">🔍</div>
+      <p class="text-white font-semibold mb-1">No results for "{{ query }}"</p>
+      <p class="text-slate-400 text-sm">Try a different term — search checks file names, column names, and AI insights.</p>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="glass rounded-2xl p-16 text-center">
+    <div class="text-4xl mb-3">🔍</div>
+    <p class="text-slate-400 text-sm">Type at least 2 characters to search across your files, columns, and chart titles.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

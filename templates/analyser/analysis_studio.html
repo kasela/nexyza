@@ -1,0 +1,187 @@
+{% extends 'app_base.html' %}
+{% load static %}
+{% load analyser_safety %}
+{% analyser_safe_mode as analyser_safe_mode %}
+{% block title %}Analysis Studio | {{ upload.original_name|safe_preview }}{% endblock %}
+
+{% block content %}
+<script id="analysis-studio-config" type="application/json">
+{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "crossFilterUrl": "{% url 'analyser:cross_filter' upload.id %}",
+  "saveViewUrl": "{% url 'analyser:save_analysis_view' upload.id %}",
+  "drilldownUrl": "{% url 'analyser:drilldown_data' upload.id %}",
+  "loadViewBase": "/workspace/{{ upload.id|escapejs }}/studio/views/",
+  "chartUpdateBase": "/workspace/{{ upload.id|escapejs }}/studio/charts/",
+  "csrf": "{{ csrf_token }}"
+}
+</script>
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-6">
+    <div>
+      <div class="text-xs text-slate-500 mb-2">
+        <a href="{% url 'dashboard:index' %}" class="hover:text-slate-300">Dashboard</a>
+        <span>/</span>
+        <a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">{{ upload.original_name|safe_preview }}</a>
+        <span>/</span>
+        <span class="text-slate-300">Analysis Studio</span>
+      </div>
+      <h1 class="text-2xl font-bold text-white">Analysis Studio · Phase 4</h1>
+      <p class="text-sm text-slate-400 mt-1">Interactive analytics plus forecasting, benchmarks, smart alerts, and scenario planning while preserving the current Nexyza theme.</p>
+    </div>
+    <div class="flex gap-2 flex-wrap">
+      <a href="{% url 'analyser:forecast_workspace' upload.id %}" class="btn-primary py-2 px-4 text-sm">Forecast Workspace</a>
+      <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-secondary py-2 px-4 text-sm">Open Charts</a>
+      <a href="{% url 'analyser:result' upload.id %}" class="btn-secondary py-2 px-4 text-sm">Back to Analysis</a>
+    </div>
+  </div>
+
+  {% include 'analyser/partials/filter_ribbon.html' %}
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-5 mb-6">
+    <div class="xl:col-span-8 space-y-5">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <div class="glass rounded-2xl p-5 xl:col-span-2" style="border:1px solid rgba(124,58,237,0.15);">
+          <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-3 mb-4">
+            <div>
+              <h3 class="text-white font-semibold">Commercial dashboard flow</h3>
+              <p class="text-sm text-slate-400 mt-1">Charts are arranged in an executive reading order so the first screen tells the business story faster.</p>
+            </div>
+            <span class="text-xs text-slate-400">{{ charts|length }} charts in layout</span>
+          </div>
+
+          {% if dashboard_layout.executive_snapshot %}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+              {% for item in dashboard_layout.executive_snapshot %}
+                <div class="rounded-2xl px-4 py-4" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+                  <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500">{{ item.label }}</p>
+                  <p class="text-lg font-semibold mt-2 {% if item.tone == 'rose' %}text-rose-300{% elif item.tone == 'emerald' %}text-emerald-300{% elif item.tone == 'cyan' %}text-cyan-300{% elif item.tone == 'amber' %}text-amber-300{% else %}text-violet-300{% endif %}">{{ item.value }}</p>
+                  <p class="text-xs text-slate-500 mt-2">{{ item.helper }}</p>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
+          {% if dashboard_layout.narrative %}
+            <div class="rounded-2xl px-4 py-4 mb-5" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);">
+              <p class="text-[11px] uppercase tracking-[0.18em] text-slate-500 mb-3">Story highlights</p>
+              <div class="space-y-2">
+                {% for point in dashboard_layout.narrative %}
+                  <div class="flex items-start gap-2">
+                    <span class="mt-1 h-1.5 w-1.5 rounded-full bg-violet-400"></span>
+                    <p class="text-sm text-slate-300">{{ point|safe_text }}</p>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endif %}
+
+          <div class="space-y-5" id="studio-chart-pack">
+            {% for section in dashboard_layout.sections %}
+              <section class="rounded-2xl px-4 py-4" style="background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05);">
+                <div class="flex items-start justify-between gap-3 mb-3">
+                  <div>
+                    <h4 class="text-sm font-semibold text-white">{{ section.title }}</h4>
+                    <p class="text-xs text-slate-500 mt-1">{{ section.description }}</p>
+                  </div>
+                  <span class="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-slate-400">{{ section.charts|length }} chart{{ section.charts|length|pluralize }}</span>
+                </div>
+                <div class="grid md:grid-cols-2 gap-3">
+                  {% for chart in section.charts %}
+                    {% with c=chart.object|default:chart %}
+                    <button type="button" class="rounded-xl px-4 py-3 text-left studio-chart-card {% if c.chart_type == 'kpi' %}md:col-span-1{% elif c.size == 'full' %}md:col-span-2{% endif %}" data-chart-id="{{ c.id }}" data-title="{{ c.title|escape }}" data-chart-type="{{ c.chart_type }}" data-aggregation="{{ c.aggregation }}" data-size="{{ c.size }}" data-x-axis="{{ c.x_axis|escape }}" data-y-axis="{{ c.y_axis|escape }}" data-group-by="{{ c.group_by|escape }}" data-color="{{ c.color }}" data-target-column="{{ c.config_json.target_column|default:'' }}" data-benchmark-column="{{ c.config_json.benchmark_column|default:'' }}" data-rolling-window="{{ c.config_json.rolling_window|default:3 }}" data-top-n="{{ c.config_json.top_n|default:10 }}" data-comparison-mode="{{ c.config_json.comparison_mode|default:'' }}" data-show-annotations="{% if c.config_json.show_annotations %}true{% else %}false{% endif %}" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);">
+                      <div class="flex items-center justify-between gap-2 mb-1">
+                        <p class="text-sm text-slate-200 font-medium truncate">{{ c.title|safe_preview }}</p>
+                        <span class="text-[10px] uppercase tracking-wide text-violet-300">{{ c.chart_type|safe_preview }}</span>
+                      </div>
+                      <p class="text-xs text-slate-500">{{ c.x_axis|safe_preview }}{% if c.x_axis and c.y_axis %} → {% endif %}{{ c.y_axis|safe_preview }}</p>
+                      <div class="flex flex-wrap gap-2 mt-2">
+                        <span class="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-400">{{ c.aggregation }}</span>
+                        <span class="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-400">{{ c.size }}</span>
+                        {% if c.group_by %}<span class="text-[10px] px-2 py-1 rounded-full bg-white/5 text-slate-400">{{ c.group_by|safe_preview }}</span>{% endif %}
+                      </div>
+                      {% if not analyser_safe_mode %}
+                        {% if c.cached_data.insight_summary %}
+                          <p class="text-xs text-slate-400 mt-2">{{ c.cached_data.insight_summary|safe_text }}</p>
+                        {% elif c.config_json.insight %}
+                          <p class="text-xs text-slate-400 mt-2">{{ c.config_json.insight|safe_text }}</p>
+                        {% endif %}
+                      {% else %}
+                        <p class="text-xs text-slate-500 mt-2">Safe mode keeps free-text summaries hidden on local development pages.</p>
+                      {% endif %}
+                    </button>
+                    {% endwith %}
+                  {% endfor %}
+                </div>
+              </section>
+            {% empty %}
+              <p class="text-sm text-slate-400">No charts created yet.</p>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="space-y-5">
+          {% include 'analyser/partials/saved_views_dropdown.html' %}
+          {% include 'analyser/partials/alert_panel.html' %}
+          <div class="glass rounded-2xl p-5" style="border:1px solid rgba(124,58,237,0.15);">
+            <div class="flex items-center justify-between mb-3">
+              <h3 class="text-white font-semibold">Drill-down explorer</h3>
+              <button type="button" id="run-drilldown" class="btn-secondary py-2 px-3 text-xs">Run</button>
+            </div>
+            <div class="space-y-3">
+              <div>
+                <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Dimension</label>
+                <select id="drilldown-dimension" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+                  <option value="">Choose dimension</option>
+                  {% for item in category_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+                </select>
+              </div>
+              <div>
+                <label class="text-[11px] uppercase tracking-wide text-slate-500 block mb-1">Metric</label>
+                <select id="drilldown-metric" class="w-full rounded-xl bg-white/5 border border-white/10 text-slate-200 px-3 py-2 text-sm">
+                  <option value="">Row count</option>
+                  {% for item in numeric_columns %}<option value="{{ item }}">{{ item|safe_preview }}</option>{% endfor %}
+                </select>
+              </div>
+              <div id="drilldown-summary" class="text-xs text-slate-500">Choose a dimension and optionally a metric to open a deeper breakdown.</div>
+              <div id="drilldown-bars" class="space-y-2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="xl:col-span-4">
+      {% include 'analyser/partials/scenario_panel.html' %}
+{% include 'analyser/partials/connector_health_panel.html' %}
+      <div class="glass rounded-2xl p-5" style="border:1px solid rgba(124,58,237,0.15);">
+        <h3 class="text-white font-semibold mb-3">Analysis checklist</h3>
+        <div class="space-y-3 text-sm">
+          <div>
+            <p class="text-slate-300">Target-ready columns</p>
+            <p class="text-slate-500 text-xs mt-1">{% if target_candidates %}{{ target_candidates|join:', '|safe_text }}{% else %}None detected{% endif %}</p>
+          </div>
+          <div>
+            <p class="text-slate-300">Rows analysed</p>
+            <p class="text-slate-500 text-xs mt-1">{{ upload.row_count }}</p>
+          </div>
+          <div>
+            <p class="text-slate-300">Columns analysed</p>
+            <p class="text-slate-500 text-xs mt-1">{{ upload.column_count }}</p>
+          </div>
+          <div>
+            <p class="text-slate-300">Default chart selection</p>
+            <p class="text-slate-500 text-xs mt-1" id="default-chart-selection">{% if default_chart_payload %}{{ default_chart_payload.title|safe_preview }}{% else %}No charts available{% endif %}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% include 'analyser/partials/chart_inspector.html' %}
+<script src="{% static 'js/analyser/cross-filter.js' %}"></script>
+<script src="{% static 'js/analyser/drilldown.js' %}"></script>
+<script src="{% static 'js/analyser/chart-inspector.js' %}"></script>
+<script src="{% static 'js/analyser/scenario-panel.js' %}"></script>
+{% endblock %}

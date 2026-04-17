@@ -1,0 +1,1025 @@
+{% extends 'app_base.html' %}
+{% load datalens_extras %}
+{% load static %}
+{% load analyser_safety %}
+{% analyser_safe_mode as analyser_safe_mode %}
+{% block title %}{{ upload.original_name|safe_preview }} — Nexyza{% endblock %}
+
+{% block extra_head %}
+<style>
+/* ── Base layout ──────────────────────────────────────────── */
+:root{
+  --surface: rgba(12,10,22,0.95);
+  --glass:   rgba(255,255,255,0.04);
+  --border:  rgba(124,58,237,0.18);
+  --accent:  #7c3aed;
+  --accent2: #3b82f6;
+  --text:    #e2e8f0;
+  --muted:   #64748b;
+  --radius:  14px;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────── */
+.tab-strip{display:flex;gap:2px;padding:4px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;width:fit-content;flex-wrap:wrap;}
+.tab-btn{padding:6px 14px;border-radius:8px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap;background:none;border:none;}
+.tab-btn:hover:not(.active){color:#94a3b8;background:rgba(255,255,255,0.05);}
+.tab-btn.active{background:rgba(124,58,237,0.25);color:#c4b5fd;font-weight:600;}
+
+/* ── Chart card ───────────────────────────────────────────── */
+.chart-card-wrapper{
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:border-color .2s, box-shadow .2s;
+  position:relative;
+}
+.chart-card-wrapper:hover{border-color:rgba(124,58,237,0.35);box-shadow:0 0 0 1px rgba(124,58,237,0.1);}
+
+/* ── Chart toolbar ────────────────────────────────────────── */
+.chart-toolbar{
+  display:flex;align-items:center;gap:6px;
+  padding:8px 12px 0;flex-shrink:0;
+}
+.chart-toolbar-actions{
+  display:flex;align-items:center;gap:3px;
+  margin-left:auto;opacity:0;transition:opacity .15s;
+}
+.chart-card-wrapper:hover .chart-toolbar-actions{opacity:1;}
+.tb-btn{
+  width:26px;height:26px;border-radius:6px;border:none;cursor:pointer;
+  background:rgba(255,255,255,0.06);color:#94a3b8;font-size:12px;
+  display:flex;align-items:center;justify-content:center;transition:all .15s;
+}
+.tb-btn:hover{background:rgba(124,58,237,0.2);color:#a78bfa;}
+.tb-btn.active{background:rgba(124,58,237,0.3);color:#c4b5fd;}
+
+/* ── Dropdown ─────────────────────────────────────────────── */
+.tb-dropdown{position:relative;display:inline-block;}
+.tb-menu{
+  position:absolute;top:calc(100% + 4px);right:0;z-index:200;
+  background:rgba(15,12,28,0.97);border:1px solid var(--border);
+  border-radius:10px;padding:4px;min-width:150px;
+  box-shadow:0 12px 40px rgba(0,0,0,0.5);
+  display:none;
+}
+.tb-menu.open{display:block;}
+.tb-menu-item{
+  padding:7px 12px;border-radius:6px;font-size:12px;color:#94a3b8;
+  cursor:pointer;display:flex;align-items:center;gap:8px;transition:.1s;
+}
+.tb-menu-item:hover{background:rgba(124,58,237,0.15);color:#e2e8f0;}
+.tb-menu-item.active{background:rgba(124,58,237,0.2);color:#c4b5fd;}
+.tb-divider{height:1px;background:var(--border);margin:3px 0;}
+
+/* ── Resize handle ────────────────────────────────────────── */
+.resize-handle{
+  position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:se-resize;
+  opacity:0;transition:opacity .2s;
+}
+.chart-card-wrapper:hover .resize-handle{opacity:1;}
+.resize-handle::after{
+  content:'';position:absolute;bottom:3px;right:3px;
+  width:8px;height:8px;
+  border-bottom:2px solid var(--muted);border-right:2px solid var(--muted);
+  border-radius:0 0 2px 0;
+}
+
+/* ── Fullscreen overlay ───────────────────────────────────── */
+/* ── Presentation / Fullscreen overlay ───────────────────── */
+#nxp-overlay{
+  display:none;
+  visibility:hidden;
+  opacity:0;
+  position:fixed;inset:0;z-index:2147483647;
+  background:#050308;flex-direction:column;
+  font-family:'DM Sans',system-ui,sans-serif;
+}
+#nxp-overlay.open{display:flex !important;visibility:visible !important;opacity:1 !important;}
+
+/* Header */
+.fs-header{
+  display:flex;align-items:center;gap:14px;flex-shrink:0;
+  padding:14px 28px 10px;
+  background:rgba(15,12,30,.85);
+  border-bottom:1px solid rgba(124,58,237,.18);
+}
+#nxp-badge{
+  font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:#7c3aed;background:rgba(124,58,237,.15);
+  border:1px solid rgba(124,58,237,.3);border-radius:999px;
+  padding:3px 10px;flex-shrink:0;
+}
+#nxp-counter{color:#475569;font-size:12px;flex-shrink:0;}
+#nxp-title{color:#fff;font-weight:700;font-size:1.15rem;flex:1;min-width:0;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+          letter-spacing:-.01em;}
+#nxp-insight{color:#64748b;font-size:12px;max-width:420px;flex-shrink:0;
+            white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* Navigation arrows */
+.fs-nav{
+  position:absolute;top:50%;transform:translateY(-50%);
+  width:52px;height:52px;border-radius:50%;
+  background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+  color:#94a3b8;font-size:22px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:.15s;z-index:10;user-select:none;
+}
+.fs-nav:hover{background:rgba(124,58,237,.3);border-color:rgba(124,58,237,.5);color:#fff;}
+.fs-nav:disabled{opacity:.15;cursor:default;pointer-events:none;}
+#nxp-prev{left:16px;}
+#nxp-next{right:16px;}
+
+/* Chart area */
+#nxp-chart-area{
+  flex:1;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  padding:20px 96px;overflow:hidden;
+}
+#nxp-canvas-wrap{position:relative;width:100%;height:100%;}
+#nxp-canvas{width:100%!important;height:100%!important;}
+#nxp-canvas-wrap .chart-toolbar,#nxp-canvas-wrap .resize-handle{display:none!important;}
+#nxp-canvas-wrap .chart-card-wrapper.fs-live-card{width:min(1280px,100%)!important;max-width:100%!important;margin:0 auto;grid-column:span 1!important;display:flex;flex-direction:column;}
+#nxp-canvas-wrap .chart-card-wrapper.fs-live-card > div:last-child{flex:1 1 auto;}
+
+/* KPI slide */
+#nxp-kpi-slide{
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  width:100%;height:100%;gap:16px;
+}
+#nxp-kpi-value{
+  font-size:clamp(3.5rem,12vw,8rem);font-weight:800;line-height:1;
+  background:linear-gradient(135deg,#a78bfa,#60a5fa);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+#nxp-kpi-label{color:#475569;font-size:1.3rem;font-weight:500;}
+#nxp-kpi-sparkline{width:320px;height:64px;position:relative;}
+#nxp-kpi-sparkline canvas{width:100%!important;height:100%!important;}
+
+/* Footer / controls bar */
+.fs-controls{
+  display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap;
+  padding:10px 28px 12px;
+  background:rgba(15,12,30,.85);
+  border-top:1px solid rgba(124,58,237,.18);
+}
+.fs-dot-track{display:flex;gap:5px;align-items:center;flex:1;justify-content:center;}
+.nxp-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:rgba(255,255,255,.15);cursor:pointer;
+  transition:.2s;border:none;padding:0;
+}
+.nxp-dot.active{background:#7c3aed;transform:scale(1.35);}
+.nxp-dot:hover{background:rgba(124,58,237,.5);}
+.fs-close{
+  padding:6px 14px;background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#94a3b8;
+  font-size:12px;cursor:pointer;transition:.15s;
+}
+.fs-close:hover{background:rgba(124,58,237,.2);color:#c4b5fd;}
+.fs-btn{
+  padding:5px 12px;background:rgba(255,255,255,.05);
+  border:1px solid rgba(255,255,255,.1);border-radius:7px;
+  color:#94a3b8;font-size:11px;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.fs-btn:hover{background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4);color:#c4b5fd;}
+.fs-btn.active{background:rgba(124,58,237,.25);border-color:rgba(124,58,237,.5);color:#a78bfa;}
+.nxp-type-btn{padding:4px 9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:5px;color:#64748b;font-size:10px;cursor:pointer;transition:.12s;}
+.nxp-type-btn:hover,.nxp-type-btn.active{background:rgba(124,58,237,.2);border-color:rgba(124,58,237,.4);color:#a78bfa;}
+/* Slide-in animation */
+@keyframes fsSlideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fsSlideInR{from{opacity:0;transform:translateX(-30px)}to{opacity:1;transform:translateX(0)}}
+.fs-anim-fwd{animation:fsSlideIn .22s ease;}
+.fs-anim-rev{animation:fsSlideInR .22s ease;}
+/* Keyboard hint */
+#nxp-kbd-hint{
+  position:absolute;bottom:72px;right:28px;
+  color:rgba(71,85,105,.6);font-size:10px;pointer-events:none;
+  display:flex;gap:8px;align-items:center;
+}
+#nxp-kbd-hint kbd{
+  padding:2px 5px;border:1px solid rgba(255,255,255,.1);
+  border-radius:3px;background:rgba(255,255,255,.04);font-size:9px;
+}
+
+/* ── Download toast ───────────────────────────────────────── */
+#dl-toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);
+  border-radius:10px;padding:8px 20px;font-size:12px;color:#34d399;
+  pointer-events:none;opacity:0;transition:all .3s;z-index:9998;
+}
+#dl-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+/* ── Stat cards ───────────────────────────────────────────── */
+.stat-card{background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:16px;}
+.stat-label{color:var(--muted);font-size:11px;margin:0 0 4px;text-transform:uppercase;letter-spacing:.06em;}
+.stat-value{color:var(--text);font-size:1.6rem;font-weight:700;line-height:1;}
+
+/* ── Column badge ─────────────────────────────────────────── */
+.col-badge-num{font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(124,58,237,0.2);color:#a78bfa;}
+.col-badge-txt{font-size:10px;padding:2px 8px;border-radius:999px;background:rgba(59,130,246,0.2);color:#60a5fa;}
+
+/* ── Search ───────────────────────────────────────────────── */
+.search-input{
+  width:100%;padding:8px 12px;font-size:13px;
+  background:rgba(255,255,255,0.04);border:1px solid var(--border);
+  border-radius:10px;color:var(--text);outline:none;transition:.15s;
+}
+.search-input:focus{border-color:rgba(124,58,237,0.4);background:rgba(124,58,237,0.05);}
+.search-input::placeholder{color:var(--muted);}
+
+/* ── Prose AI ─────────────────────────────────────────────── */
+.prose-ai h1,.prose-ai h2,.prose-ai h3{color:#e2e0f0;margin:.8em 0 .3em;}
+.prose-ai p,.prose-ai li{color:#94a3b8;line-height:1.7;font-size:13.5px;}
+.prose-ai strong{color:#c4b5fd;}
+.prose-ai code{color:#a78bfa;background:rgba(124,58,237,0.12);padding:1px 5px;border-radius:4px;font-size:12px;}
+.prose-ai ul{padding-left:1.2em;}
+.enh-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;border:1px solid rgba(124,58,237,.22);background:rgba(124,58,237,.08);color:#a78bfa;font-size:11px;}
+.enh-soft{color:#64748b;font-size:11px;}
+.enh-shortcut{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);color:#94a3b8;font-size:11px;}
+.enh-shortcut kbd{padding:2px 6px;border-radius:5px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);font-size:10px;color:#cbd5e1;}
+</style>
+<style>@keyframes spin{to{transform:rotate(360deg);}}</style>
+{% endblock %}
+
+{% block content %}
+{% if upload.screening_profile and not upload.screening_profile.is_confirmed and upload.screening_profile.requires_clarification %}
+<div class="glass rounded-2xl border border-amber-700/30 bg-amber-900/10 p-4 mb-6">
+  <div class="flex items-center justify-between gap-4">
+    <div>
+      <h3 class="text-white font-semibold">AI screening found ambiguous fields</h3>
+      <p class="text-slate-400 text-sm">Answer a short checklist so the dashboard uses the correct measure, target, time field, and grouping.</p>
+    </div>
+    <a href="{% url 'analyser:adaptive_refinement' upload.id %}" class="btn-primary whitespace-nowrap">Adaptive refinement</a>
+    <a href="{% url 'analyser:power_dashboard' upload.id %}" class="btn-secondary whitespace-nowrap">Executive dashboard</a>
+  </div>
+</div>
+{% endif %}
+
+{% include "analyser/charts/partials/chart_settings_modal.html" %}
+<div style="max-width:1400px;margin:0 auto;padding:28px 20px 60px;">
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <div style="display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;">
+    <div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;align-items:center;gap:6px;">
+        <a href="{% url 'dashboard:index' %}" style="color:var(--muted);text-decoration:none;" onmouseover="this.style.color='#94a3b8'" onmouseout="this.style.color='var(--muted)'">Dashboard</a>
+        <span>›</span>
+        <span style="color:#94a3b8;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ upload.original_name|safe_preview }}</span>
+      </div>
+      <h1 style="color:#fff;font-size:1.5rem;font-weight:700;margin:0;display:flex;align-items:center;gap:10px;">
+        {{ upload.original_name|truncatechars:50 }}
+        {% if upload.label and 'Live' in upload.label %}
+        <span style="font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);color:#34d399;">● LIVE</span>
+        {% endif %}
+      </h1>
+      {% if not is_shared_view %}{% include 'analyser/partials/sheet_selector.html' %}{% endif %}
+    </div>
+
+    {% if not is_shared_view %}
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">
+      <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-primary" style="font-size:12px;padding:7px 14px;">📊 Chart Gallery</a>
+      <button type="button" onclick="console.log('[NXPresent] top Present button clicked');presentAll()" class="btn-secondary" style="font-size:12px;padding:7px 12px;display:inline-flex;align-items:center;gap:5px;" title="Present all charts"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg> Present</button>
+      <a href="{% url 'cleaner:cleaner' upload.id %}" class="btn-secondary" style="font-size:12px;padding:7px 12px;">🧹 Clean</a>
+      <a href="{% url 'formulas:editor' upload.id %}" class="btn-secondary" style="font-size:12px;padding:7px 12px;">𝑓 Formulas</a>
+      <a href="{% url 'anomaly:report' upload.id %}" class="btn-secondary" style="font-size:12px;padding:7px 12px;">🔍 Anomaly</a>
+      <a href="{% url 'forecasting:view' upload.id %}" class="btn-secondary" style="font-size:12px;padding:7px 12px;">📈 Forecast</a>
+      <a href="{% url 'connectors:list' %}" class="btn-secondary" style="font-size:12px;padding:7px 12px;">🔌 Connectors</a>
+      <script src="{% static 'js/analyser/chart-actions.js' %}"></script>
+      <script>
+      // Stub — real implementation loaded later in page
+      window.requestExport = function requestExport(fmt,id){
+        if(typeof _doExport==='function'){
+          toggleMenu('export-menu');
+          if(fmt==='pptx'&&typeof showThemePicker==='function'){showThemePicker(id);return;}
+          _doExport(fmt,id,'dark');
+        } else {
+          // Functions not yet loaded, wait briefly then retry
+          setTimeout(function(){requestExport(fmt,id);},100);
+        }
+      }
+      window.showThemePicker = function showThemePicker(id){
+        if(typeof _showThemePicker==='function'){_showThemePicker(id);}
+        else{setTimeout(function(){showThemePicker(id);},100);}
+      }
+      // Close menus on outside click
+      document.addEventListener('click',function(e){
+        if(!e.target.closest('.tb-dropdown'))
+          document.querySelectorAll('.tb-menu.open').forEach(function(m){m.classList.remove('open');});
+      });
+      </script>
+      <div class="tb-dropdown">
+        <button class="btn-secondary" style="font-size:12px;padding:7px 12px;" onclick="toggleMenu('export-menu')">↓ Export ▾</button>
+        <div id="export-menu" class="tb-menu">
+          <button onclick="requestExport('pdf','{{ upload.id|escapejs }}')" class="tb-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">📄 PDF Report</button>
+          <button onclick="requestExport('pptx','{{ upload.id|escapejs }}')" class="tb-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">📑 PowerPoint</button>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:4px 0;">
+          <a href="{% url 'analyser:export' upload.id 'csv' %}" class="tb-menu-item">↓ CSV Data</a>
+          <a href="{% url 'analyser:export' upload.id 'json' %}" class="tb-menu-item">↓ JSON Analysis</a>
+        </div>
+      </div>
+      <button onclick="togglePanel('export-history-panel')" class="btn-secondary" style="font-size:12px;padding:7px 12px;">🕘 History</button>
+      <div class="tb-dropdown">
+        <button class="btn-secondary" style="font-size:12px;padding:7px 12px;" onclick="toggleMenu('present-menu')">▶ Present ▾</button>
+        <div id="present-menu" class="tb-menu">
+          <button type="button" onclick="console.log('[NXPresent] menu All slides clicked');presentMode('all')" class="tb-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">📽 All slides</button>
+          <button type="button" onclick="console.log('[NXPresent] menu Charts only clicked');presentMode('charts')" class="tb-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">📊 Charts only</button>
+          <button type="button" onclick="console.log('[NXPresent] menu KPIs only clicked');presentMode('kpis')" class="tb-menu-item" style="width:100%;text-align:left;background:none;border:none;cursor:pointer;">🔢 KPIs only</button>
+        </div>
+      </div>
+      <button id="pin-btn" onclick="togglePin()" class="btn-secondary" style="font-size:12px;padding:7px 12px;"
+              title="{% if upload.is_pinned %}Unpin from dashboard{% else %}Pin to dashboard{% endif %}">
+        {% if upload.is_pinned %}📌{% else %}📍{% endif %}
+      </button>
+      <button onclick="togglePanel('comment-panel')" class="btn-secondary" style="font-size:12px;padding:7px 12px;">💬 Notes</button>
+      <a href="{% url 'analyser:upload' %}" class="btn-primary" style="font-size:12px;padding:7px 12px;">+ New</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Presence bar ─────────────────────────────────────────── -->
+  {% if not is_shared_view %}
+  <div id="export-history-panel" style="display:none;flex-direction:column;gap:10px;margin-bottom:16px;padding:16px 18px;border-radius:18px;background:rgba(15,12,30,.88);border:1px solid rgba(124,58,237,.18);box-shadow:0 10px 30px rgba(0,0,0,.25);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div>
+        <p style="margin:0;color:#fff;font-size:14px;font-weight:700;">Recent Exports</p>
+        <p style="margin:4px 0 0;color:var(--muted);font-size:12px;">Track recent PDF and PowerPoint jobs, then retry or download from one place.</p>
+      </div>
+      <button type="button" class="btn-secondary" style="font-size:12px;padding:7px 12px;" onclick="if(window.refreshExportHistory){window.refreshExportHistory();}">↻ Refresh</button>
+    </div>
+    <div id="export-history-list" style="display:grid;gap:10px;"></div>
+    <p id="export-history-empty" style="margin:0;color:var(--muted);font-size:12px;display:none;">No exports yet. Generate a PDF or PowerPoint to see history here.</p>
+  </div>
+
+  <div id="presence-bar" style="display:flex;align-items:center;gap:8px;margin-bottom:16px;min-height:24px;">
+    <span style="color:#374151;font-size:11px;">Also viewing:</span>
+    <div id="presence-avatars" style="display:flex;gap:4px;"></div>
+    <span id="presence-empty" style="color:#374151;font-size:11px;">just you</span>
+  </div>
+  {% endif %}
+
+  <!-- ── Summary cards ────────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;">
+    <div class="stat-card"><p class="stat-label">Rows</p><p class="stat-value">{{ analysis.rows|default:0 }}</p></div>
+    <div class="stat-card"><p class="stat-label">Columns</p><p class="stat-value">{{ analysis.cols|default:0 }}</p></div>
+    <div class="stat-card"><p class="stat-label">File Size</p><p class="stat-value" style="font-size:1.2rem;">{{ upload.file_size_display }}</p></div>
+    <div class="stat-card"><p class="stat-label">Format</p><p class="stat-value" style="font-size:1.2rem;text-transform:uppercase;">{{ upload.file_type }}</p></div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:-6px 0 18px;">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span class="enh-chip">✨ Enhanced analyser shell</span>
+      <span class="enh-soft">Stateful tabs, remembered layout, presentation presets, keyboard shortcuts, chart sorting and filter memory.</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span class="enh-shortcut"><kbd>P</kbd> present</span>
+      <span class="enh-shortcut"><kbd>1-7</kbd> tabs</span>
+      <span class="enh-shortcut"><kbd>/</kbd> chart search</span>
+    </div>
+  </div>
+
+  <!-- ── Tabs ──────────────────────────────────────────────────── -->
+  <div class="tab-strip" style="margin-bottom:20px;" id="tabs">
+    <button class="tab-btn active" onclick="showTab('charts')" id="tab-charts">
+      📊 Charts
+      {% with cc=upload.chart_configs.count %}{% if cc %}<span style="background:rgba(124,58,237,.3);color:#a78bfa;font-size:10px;padding:1px 7px;border-radius:999px;margin-left:4px;">{{ cc }}</span>{% endif %}{% endwith %}
+    </button>
+    <button class="tab-btn" onclick="showTab('overview')" id="tab-overview">Overview</button>
+    <button class="tab-btn" onclick="showTab('columns')" id="tab-columns">Columns</button>
+    <button class="tab-btn" onclick="showTab('preview')" id="tab-preview">Preview</button>
+    {% if analysis.correlation %}<button class="tab-btn" onclick="showTab('correlation')" id="tab-correlation">Correlation</button>{% endif %}
+    <button class="tab-btn" onclick="showTab('ai')" id="tab-ai">🤖 AI Insights</button>
+    <button class="tab-btn" onclick="showTab('nlq')" id="tab-nlq">💬 Ask AI</button>
+    {% if not is_shared_view %}<button class="tab-btn" onclick="showTab('share')" id="tab-share">🔗 Share</button>{% endif %}
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: CHARTS  — enhanced interactive chart grid
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-charts">
+
+    <!-- Chart controls bar -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <input type="text" id="chart-search" placeholder="Search charts…" class="search-input" style="max-width:220px;"
+             oninput="filterCharts(this.value)">
+      <!-- Type filter pills -->
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="type-filters">
+        <button class="tb-btn active" style="width:auto;padding:4px 10px;font-size:11px;" onclick="filterByType('all',this)">All</button>
+        <button class="tb-btn" style="width:auto;padding:4px 10px;font-size:11px;" onclick="filterByType('kpi',this)">KPI</button>
+        <button class="tb-btn" style="width:auto;padding:4px 10px;font-size:11px;" onclick="filterByType('line',this)">Trends</button>
+        <button class="tb-btn" style="width:auto;padding:4px 10px;font-size:11px;" onclick="filterByType('bar',this)">Bars</button>
+        <button class="tb-btn" style="width:auto;padding:4px 10px;font-size:11px;" onclick="filterByType('doughnut',this)">Donut</button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+        <span id="charts-summary" class="enh-soft">Showing charts…</span>
+        <select id="chart-sort" class="search-input" style="width:160px;padding:6px 10px;font-size:11px;" onchange="sortCharts(this.value)">
+          <option value="default">Sort: Default</option>
+          <option value="title-asc">Title A–Z</option>
+          <option value="title-desc">Title Z–A</option>
+          <option value="type">Chart type</option>
+        </select>
+        <button class="tb-btn" title="2-column layout" onclick="setLayout(2)" id="layout-2">▦</button>
+        <button class="tb-btn active" title="3-column layout" onclick="setLayout(3)" id="layout-3">⊞</button>
+        <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-primary" style="font-size:11px;padding:6px 12px;">Open Gallery →</a>
+      </div>
+    </div>
+
+    <!-- Charts grid -->
+    <div id="charts-grid" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start;">
+    {% with charts=upload.chart_configs.all %}
+    {% if charts %}
+
+      {% for chart in charts %}
+      {% with d=chart.cached_data cid=chart.id %}
+      <div class="chart-card-wrapper" id="cw-{{ cid }}" data-cid="{{ cid }}" data-order="{{ forloop.counter0 }}"
+           data-type="{{ chart.chart_type }}"
+           data-title="{{ chart.title|safe_preview|lower }}"
+           {% if d and d.datasets and not d.kpi and not d.heatmap and d.labels or d and d.datasets and d.chart_type == 'scatter' and not d.kpi %}data-fs-json-id="fs-data-{{ cid }}"{% endif %}
+           style="{% if chart.size == 'full' or chart.size == 'lg' %}grid-column:span 2{% else %}grid-column:span 1{% endif %};">
+
+        <!-- Toolbar -->
+        <div class="chart-toolbar">
+          <p style="color:#e2e8f0;font-size:12px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ chart.title|safe_preview }}">{{ chart.title|safe_preview }}</p>
+          <div class="chart-toolbar-actions">
+            <!-- Change chart type -->
+            <div class="tb-dropdown">
+              <button class="tb-btn" title="Change chart type" onclick="toggleMenu('type-menu-{{ cid }}')">⬚</button>
+              <div id="type-menu-{{ cid }}" class="tb-menu">
+                <div style="padding:4px 8px 2px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Chart Type</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'bar' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','bar')">▬ Bar</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'horizontal_bar' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','horizontal_bar')">≡ Horizontal Bar</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'line' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','line')">∿ Line</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'area' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','area')">◿ Area</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'scatter' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','scatter')">⁘ Scatter</div>
+                <div class="tb-divider"></div>
+                <div class="tb-menu-item {% if chart.chart_type == 'doughnut' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','doughnut')">◎ Doughnut</div>
+                <div class="tb-menu-item {% if chart.chart_type == 'pie' %}active{% endif %}" onclick="changeType('{{ cid|escapejs }}','pie')">◔ Pie</div>
+              </div>
+            </div>
+            <!-- Color -->
+            <div class="tb-dropdown">
+              <button class="tb-btn" title="Change color" onclick="toggleMenu('color-menu-{{ cid }}')">🎨</button>
+              <div id="color-menu-{{ cid }}" class="tb-menu">
+                <div style="padding:4px 8px 2px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Color</div>
+                {% for val,label in chart_type_choices|default:"" %}{% endfor %}
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','violet')">🟣 Violet</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','blue')">🔵 Blue</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','emerald')">🟢 Emerald</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','amber')">🟡 Amber</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','rose')">🔴 Rose</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','cyan')">🩵 Cyan</div>
+                <div class="tb-menu-item" onclick="changeColor('{{ cid|escapejs }}','multi')">🌈 Multi</div>
+              </div>
+            </div>
+            <!-- Resize -->
+            <div class="tb-dropdown">
+              <button class="tb-btn" title="Resize" onclick="toggleMenu('size-menu-{{ cid }}')">⤢</button>
+              <div id="size-menu-{{ cid }}" class="tb-menu">
+                <div style="padding:4px 8px 2px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Size</div>
+                <div class="tb-menu-item {% if chart.size == 'sm' %}active{% endif %}" onclick="changeSize('{{ cid|escapejs }}','sm')">▪ Small (1 col)</div>
+                <div class="tb-menu-item {% if chart.size == 'md' %}active{% endif %}" onclick="changeSize('{{ cid|escapejs }}','md')">▬ Medium (1 col)</div>
+                <div class="tb-menu-item {% if chart.size == 'lg' %}active{% endif %}" onclick="changeSize('{{ cid|escapejs }}','lg')">◼ Large (2 col)</div>
+                <div class="tb-menu-item {% if chart.size == 'full' %}active{% endif %}" onclick="changeSize('{{ cid|escapejs }}','full')">⬛ Full Width (2 col)</div>
+              </div>
+            </div>
+            <!-- Fullscreen -->
+            <button class="tb-btn" title="Present" onclick="openFullscreen('{{ cid|escapejs }}')" style="display:flex;align-items:center;justify-content:center;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg></button>
+            <!-- Download -->
+            <div class="tb-dropdown">
+              <button class="tb-btn" title="Download" onclick="toggleMenu('dl-menu-{{ cid }}')">↓</button>
+              <div id="dl-menu-{{ cid }}" class="tb-menu">
+                <div class="tb-menu-item" onclick="downloadChart('{{ cid|escapejs }}','png')">🖼 PNG Image</div>
+                <div class="tb-menu-item" onclick="downloadChart('{{ cid|escapejs }}','svg')">📐 SVG Vector</div>
+                <div class="tb-menu-item" onclick="copyChartData('{{ cid|escapejs }}')">📋 Copy data</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Insight -->
+        {% with insight=chart.config_json.insight %}{% if insight %}
+        <p style="color:#475569;font-size:11px;padding:2px 12px 6px;line-height:1.4;">{{ insight|safe_text }}</p>
+        {% endif %}{% endwith %}
+
+        <!-- Chart body -->
+        <div id="body-{{ cid }}" style="padding:0 10px 12px;flex-shrink:0;overflow:hidden;
+          height:{% if chart.chart_type == 'kpi' %}110px{% elif chart.chart_type == 'heatmap' %}200px{% elif chart.size == 'full' or chart.size == 'lg' %}260px{% else %}210px{% endif %};">
+
+          {% if not d %}
+            <div style="height:100%;display:flex;align-items:center;justify-content:center;"><p style="color:#374151;font-size:12px;">No data</p></div>
+          {% elif d.error %}
+            <div style="height:100%;display:flex;align-items:center;justify-content:center;padding:8px;"><p style="color:#f87171;font-size:11px;text-align:center;">{{ d.error }}</p></div>
+          {% elif d.kpi %}
+            <div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+              <p style="font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1;margin:0;">{{ d.value|default:"—" }}</p>
+              <p style="color:#64748b;font-size:11px;text-align:center;margin:0;">{{ d.label }}</p>
+              {% if d.sparkline %}
+              <div style="height:28px;width:100%;position:relative;margin-top:4px;">
+                <canvas id="spark-{{ cid }}"></canvas>
+              </div>
+              <script>(function(){var el=document.getElementById('spark-{{ cid }}');if(!el)return;var sp={{ d.sparkline|safe }};if(!sp||!sp.length)return;new Chart(el,{type:'bar',data:{labels:sp.map(function(_,i){return i}),datasets:[{data:sp,backgroundColor:'rgba(139,92,246,0.45)',borderRadius:1,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}}}});})();</script>
+              {% endif %}
+            </div>
+          {% elif d.heatmap %}
+            {% if d.columns %}
+            <div style="height:100%;overflow:auto;">
+              <table style="font-size:9px;border-collapse:collapse;width:100%;">
+                <thead><tr><th style="padding:2px 4px;color:#475569;"></th>{% for col in d.columns %}<th style="padding:2px 3px;color:#94a3b8;text-align:center;white-space:nowrap;">{{ col|truncatechars:7 }}</th>{% endfor %}</tr></thead>
+                <tbody>{% for row in d.matrix %}<tr><td style="padding:2px 4px;color:#94a3b8;white-space:nowrap;">{{ d.columns|slice:forloop.counter0|last|truncatechars:7 }}</td>
+                {% for val in row %}<td style="padding:2px 3px;text-align:center;border-radius:2px;font-size:9px;background:{% if val == None %}transparent{% elif val >= 0.7 %}rgba(139,92,246,0.65){% elif val >= 0.4 %}rgba(139,92,246,0.32){% elif val >= 0.1 %}rgba(139,92,246,0.12){% elif val <= -0.4 %}rgba(244,63,94,0.38){% elif val <= -0.1 %}rgba(244,63,94,0.15){% else %}transparent{% endif %};color:#94a3b8;">{% if val != None %}{{ val|floatformat:2 }}{% else %}—{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+              </table>
+            </div>
+            {% else %}<div style="height:100%;display:flex;align-items:center;justify-content:center;"><p style="color:#374151;font-size:12px;">Need 3+ numeric columns</p></div>{% endif %}
+          {% else %}
+            {% if d.datasets and d.labels or d.datasets and d.chart_type == 'scatter' %}
+            <div style="position:relative;height:100%;width:100%;">
+              <canvas id="cc-{{ cid }}"></canvas>
+            </div>
+            <script id="fs-data-{{ cid }}" type="application/json">{{ d|jsonify|safe }}</script>
+            <script>
+            (function(){
+              var raw = {{ d|jsonify|safe }};
+              if(!raw||!raw.labels||!raw.labels.length) return;
+              var ctype=raw.chart_type||'bar',isH=!!raw.is_horizontal;
+              var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[ctype]||ctype;
+              var yLbl=raw.y_label||'',xLbl=raw.x_label||'';
+              Chart.defaults.color='#94a3b8';Chart.defaults.font={family:"'DM Sans',system-ui",size:10};
+              var scales={};
+              if(jsType!=='pie'&&jsType!=='doughnut'){
+                var xA={grid:{color:'rgba(255,255,255,0.035)',drawBorder:false},ticks:{color:'#64748b',font:{size:9},maxRotation:isH?0:40,maxTicksLimit:isH?20:9}};
+                var yA={grid:{color:'rgba(255,255,255,0.05)',drawBorder:false},ticks:{color:'#64748b',font:{size:9},callback:function(v){if(yLbl&&yLbl.includes('%'))return v.toFixed(1)+'%';if(Math.abs(v)>=1e6)return(v/1e6).toFixed(1)+'M';if(Math.abs(v)>=1e3)return(v/1e3).toFixed(0)+'k';return typeof v==='number'?v.toFixed(1):v;}}};
+                if(xLbl)xA.title={display:true,text:xLbl,color:'#475569',font:{size:9}};
+                if(yLbl)yA.title={display:true,text:yLbl,color:'#475569',font:{size:9}};
+                scales=isH?{x:yA,y:xA}:{x:xA,y:yA};
+              }
+              /* Build dual-axis scales if needed */
+              if(raw.has_dual_axis&&raw.y2_label&&!isH){
+                scales.y2={
+                  position:'right',
+                  grid:{drawOnChartArea:false,color:'rgba(59,130,246,0.04)'},
+                  ticks:{color:'#60a5fa',font:{size:9},callback:function(v){
+                    var y2l=raw.y2_label||'';
+                    if(y2l.includes('%'))return v.toFixed(1)+'%';
+                    if(Math.abs(v)>=1e6)return(v/1e6).toFixed(1)+'M';
+                    if(Math.abs(v)>=1e3)return(v/1e3).toFixed(0)+'k';
+                    return typeof v==='number'?v.toFixed(1):v;}},
+                  title:raw.y2_label?{display:true,text:raw.y2_label,color:'#60a5fa',font:{size:9}}:{display:false}
+                };
+              }
+              window.DLCharts=window.DLCharts||{};
+              var inst=new Chart(document.getElementById('cc-{{ cid }}'),{
+                type:isH?'bar':jsType,
+                data:{labels:raw.labels,datasets:raw.datasets||[]},
+                options:{indexAxis:isH?'y':'x',responsive:true,maintainAspectRatio:false,animation:{duration:350},
+                  plugins:{legend:{display:(raw.datasets||[]).length>1||jsType==='pie'||jsType==='doughnut',position:(jsType==='pie'||jsType==='doughnut')?'right':'top',labels:{color:'#94a3b8',font:{size:9},boxWidth:8,padding:6,usePointStyle:true}},
+                  tooltip:{callbacks:{label:function(ctx){var v=ctx.parsed&&ctx.parsed.y!==undefined?ctx.parsed.y:ctx.parsed;if(typeof v!=='number')return ' '+v;if(yLbl&&yLbl.includes('%'))return ' '+v.toFixed(1)+'%';if(Math.abs(v)>=1e6)return ' '+(v/1e6).toFixed(2)+'M';if(Math.abs(v)>=1e3)return ' '+(v/1e3).toFixed(1)+'k';return ' '+v.toFixed(2);}}}},scales:scales}
+              });
+              window.DLCharts['{{ cid }}']=inst;
+              /* Populate DLChartMeta for settings modal */
+              window.DLChartMeta=window.DLChartMeta||{};
+              window.DLChartMeta['{{ cid }}']=window.DLChartMeta['{{ cid }}']||{
+                title:'{{ chart.title|escapejs }}',
+                chart_type:'{{ chart.chart_type }}',
+                x_axis:'{{ chart.x_axis|escapejs }}',
+                y_axis:'{{ chart.y_axis|escapejs }}',
+                group_by:'{{ chart.group_by|escapejs }}',
+                aggregation:'{{ chart.aggregation }}',
+                color:'{{ chart.color }}',
+                size:'{{ chart.size }}',
+                insight:'{{ chart.config_json.insight|default:""|escapejs }}',
+                x_label:'{{ chart.config_json.x_label|default:""|escapejs }}',
+                y_label:'{{ chart.config_json.y_label|default:""|escapejs }}',
+                extra_measures:{{ chart.config_json.extra_measures|default:"[]"|jsonify|safe }},
+                y2_axis:'{{ chart.config_json.y2_axis|default:""|escapejs }}',
+                y2_label:'{{ chart.config_json.y2_label|default:""|escapejs }}',
+                upload_pk:'{{ upload.id|escapejs }}',
+                raw:raw
+              };
+            })();
+            </script>
+            {% else %}
+            <div style="height:100%;display:flex;align-items:center;justify-content:center;"><p style="color:#374151;font-size:12px;">No chart data</p></div>
+            {% endif %}
+          {% endif %}
+        </div><!-- end body -->
+      </div>
+      {% endwith %}
+      {% endfor %}
+
+    {% else %}
+      <div style="grid-column:1/-1;text-align:center;padding:48px 20px;">
+        <div style="font-size:3rem;margin-bottom:12px;">📊</div>
+        <p style="color:#e2e8f0;font-weight:600;margin-bottom:8px;">No charts yet</p>
+        <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Open the Chart Gallery to generate AI-powered or rule-based charts.</p>
+        <a href="{% url 'analyser:chart_gallery' upload.id %}" class="btn-primary" style="padding:10px 24px;">Open Chart Gallery →</a>
+      </div>
+    {% endif %}
+    {% endwith %}
+    </div><!-- end charts-grid -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: OVERVIEW
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-overview" class="hidden">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+      {% for col in analysis.columns %}
+      {% if col.is_numeric and col.histogram %}
+      <div class="chart-card-wrapper" style="padding:16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div><p style="color:#fff;font-weight:600;font-size:13px;truncate;max-width:150px;">{{ col.name|safe_preview }}</p><p style="color:#475569;font-size:10px;font-family:monospace;">{{ col.dtype }}</p></div>
+          <span class="col-badge-num">numeric</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px;text-align:center;">
+          <div><p style="color:#475569;font-size:10px;">Min</p><p style="color:#e2e8f0;font-size:12px;font-weight:600;font-family:monospace;">{{ col.min|default:"–" }}</p></div>
+          <div><p style="color:#475569;font-size:10px;">Mean</p><p style="color:#a78bfa;font-size:12px;font-weight:600;font-family:monospace;">{{ col.mean|floatformat:2|default:"–" }}</p></div>
+          <div><p style="color:#475569;font-size:10px;">Max</p><p style="color:#e2e8f0;font-size:12px;font-weight:600;font-family:monospace;">{{ col.max|default:"–" }}</p></div>
+        </div>
+        <div style="position:relative;height:64px;"><canvas id="hist-{{ forloop.counter }}"></canvas></div>
+        <script>(function(){var d={{ col.histogram.values|safe }},l={{ col.histogram.labels|safe }};new Chart(document.getElementById('hist-{{ forloop.counter }}'),{type:'bar',data:{labels:l,datasets:[{data:d,backgroundColor:'rgba(124,58,237,0.55)',borderColor:'rgba(139,92,246,0.8)',borderWidth:1,borderRadius:2}]},options:{plugins:{legend:{display:false}},scales:{x:{display:false},y:{display:false}},maintainAspectRatio:false,animation:false}});})();</script>
+        {% if col.null_pct > 0 %}<p style="color:#f59e0b;font-size:10px;margin-top:6px;">{{ col.null_pct }}% missing</p>{% endif %}
+      </div>
+      {% elif not col.is_numeric and col.top_values %}
+      <div class="chart-card-wrapper" style="padding:16px;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px;">
+          <div><p style="color:#fff;font-weight:600;font-size:13px;">{{ col.name|safe_preview }}</p><p style="color:#475569;font-size:10px;font-family:monospace;">{{ col.dtype }}</p></div>
+          <span class="col-badge-txt">text</span>
+        </div>
+        <p style="color:#475569;font-size:11px;margin-bottom:8px;">{{ col.unique_count }} unique values</p>
+        <div style="display:flex;flex-direction:column;gap:5px;">
+          {% for tv in col.top_values|slice:":5" %}
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="color:#94a3b8;font-size:11px;min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{% if analyser_safe_mode %}Value {{ forloop.counter }}{% else %}{{ tv.value|safe_preview }}{% endif %}</span>
+            <div style="flex:1;height:5px;background:rgba(51,65,85,.5);border-radius:999px;overflow:hidden;">
+              <div style="height:100%;background:#3b82f6;border-radius:999px;width:{% widthratio tv.count col.top_values.0.count 100 %}%;"></div>
+            </div>
+            <span style="color:#475569;font-size:10px;font-family:monospace;width:28px;text-align:right;">{{ tv.count }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: COLUMNS
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-columns" class="hidden">
+    <div style="margin-bottom:12px;"><input type="text" placeholder="Search columns…" class="search-input" style="max-width:300px;" oninput="filterCols(this.value)"></div>
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="overflow-x:auto;">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;" id="cols-table">
+          <thead>
+            <tr style="background:rgba(124,58,237,0.08);border-bottom:1px solid var(--border);">
+              <th style="text-align:left;padding:10px 16px;color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Column</th>
+              <th style="text-align:left;padding:10px 12px;color:#64748b;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;">Type</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Nulls%</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Unique</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Min</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Max</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Mean</th>
+              <th style="text-align:right;padding:10px 12px;color:#64748b;font-size:11px;">Median</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for col in analysis.columns %}
+            <tr class="col-row" data-col="{{ col.name|safe_preview|lower }}" style="border-bottom:1px solid rgba(51,65,85,0.3);transition:.1s;" onmouseover="this.style.background='rgba(124,58,237,0.05)'" onmouseout="this.style.background='transparent'">
+              <td style="padding:10px 16px;color:#e2e8f0;font-weight:500;">{{ col.name|safe_preview }}</td>
+              <td style="padding:10px 12px;">{% if col.is_numeric %}<span class="col-badge-num">numeric</span>{% else %}<span class="col-badge-txt">text</span>{% endif %}</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:{% if col.null_pct > 20 %}#f87171{% elif col.null_pct > 5 %}#fbbf24{% else %}#64748b{% endif %};">{{ col.null_pct }}%</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:#94a3b8;">{{ col.unique_count }}</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:#94a3b8;">{{ col.min|default:"—" }}</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:#94a3b8;">{{ col.max|default:"—" }}</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:#a78bfa;">{{ col.mean|floatformat:2|default:"—" }}</td>
+              <td style="padding:10px 12px;text-align:right;font-family:monospace;font-size:12px;color:#94a3b8;">{{ col.median|floatformat:2|default:"—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: PREVIEW
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-preview" class="hidden">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;">
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <p style="color:#64748b;font-size:12px;">First {{ analysis.preview.rows|length }} rows</p>
+        <p style="color:#475569;font-size:11px;">{{ analysis.preview.columns|length }} columns</p>
+      </div>
+      <div style="overflow:auto;max-height:480px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:monospace;">
+          <thead style="position:sticky;top:0;background:#0f0c1e;z-index:1;">
+            <tr style="border-bottom:1px solid var(--border);">
+              {% for col in analysis.preview.columns %}<th style="padding:8px 12px;text-align:left;color:#64748b;white-space:nowrap;font-weight:500;">{{ col }}</th>{% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in analysis.preview.rows %}
+            <tr style="border-bottom:1px solid rgba(51,65,85,.2);transition:.1s;" onmouseover="this.style.background='rgba(124,58,237,0.04)'" onmouseout="this.style.background='transparent'">
+              {% for cell in row %}<td style="padding:6px 12px;color:#94a3b8;white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis;">{{ cell }}</td>{% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: CORRELATION
+  ══════════════════════════════════════════════════════════════ -->
+  {% if analysis.correlation %}
+  <div id="panel-correlation" class="hidden">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:24px;overflow-x:auto;">
+      <p style="color:#e2e8f0;font-weight:600;margin:0 0 16px;">Correlation Matrix</p>
+      <table style="font-size:11px;font-family:monospace;border-collapse:separate;border-spacing:3px;">
+        <thead><tr><th style="padding:4px 8px;color:#475569;"></th>{% for col in analysis.correlation.columns %}<th style="padding:4px 8px;color:#64748b;white-space:nowrap;font-weight:500;text-align:center;">{{ col|truncatechars:10 }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for i_row in analysis.correlation.matrix %}
+          <tr><td style="padding:4px 8px;color:#64748b;white-space:nowrap;">{{ analysis.correlation.columns|slice:forloop.counter0|last }}</td>
+          {% for val in i_row %}
+          <td style="padding:6px 10px;text-align:center;border-radius:6px;background:{% if val == None %}transparent{% elif val >= 0.7 %}rgba(124,58,237,0.55){% elif val >= 0.4 %}rgba(124,58,237,0.28){% elif val >= 0.1 %}rgba(124,58,237,0.1){% elif val <= -0.7 %}rgba(239,68,68,0.45){% elif val <= -0.4 %}rgba(239,68,68,0.22){% elif val <= -0.1 %}rgba(239,68,68,0.08){% else %}transparent{% endif %};color:{% if val == 1.0 %}#a78bfa{% else %}#94a3b8{% endif %};">{{ val|default:"—" }}</td>
+          {% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: AI INSIGHTS
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-ai" class="hidden">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:800px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(124,58,237,.25),rgba(59,130,246,.15));font-size:1.2rem;">🤖</div>
+        <div><p style="color:#fff;font-weight:600;margin:0;">Claude AI Insights</p><p style="color:#475569;font-size:12px;margin:0;">Powered by Claude Sonnet</p></div>
+        {% if not is_pro and not is_shared_view %}<span class="badge-pro" style="margin-left:auto;">PRO</span>{% endif %}
+        {% if upload.ai_insights %}
+        <span style="margin-left:auto;padding:3px 10px;border-radius:999px;background:rgba(16,185,129,.12);color:#34d399;font-size:10px;border:1px solid rgba(16,185,129,.2);">✓ Ready</span>
+        {% endif %}
+      </div>
+      <div id="ai-content">
+        {% if analyser_safe_mode %}
+          <div class="prose-ai" id="insights-rendered">Safe mode is enabled. Free-text AI insights are hidden on local development pages.</div>
+        {% elif upload.ai_insights %}
+          <div class="prose-ai" id="insights-rendered">{{ upload.ai_insights|safe_text }}</div>
+          <script>document.addEventListener('DOMContentLoaded',function(){var el=document.getElementById('insights-rendered');if(el&&typeof marked!=='undefined')el.innerHTML=marked.parse(el.textContent||el.innerText);});</script>
+        {% else %}
+          <div style="text-align:center;padding:32px 0;">
+            <p style="color:#64748b;font-size:13px;margin-bottom:20px;">Let Claude surface key findings, anomalies, and recommendations from your data.</p>
+            {% if is_pro or is_shared_view %}
+            <button hx-post="{% url 'analyser:ai_insights' upload.id %}" hx-target="#ai-content" hx-indicator="#ai-spin" class="btn-primary" style="padding:10px 28px;">
+              <span class="htmx-indicator" id="ai-spin"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg></span>
+              Generate AI Insights
+            </button>
+            {% else %}
+            <a href="/billing/pricing/" class="btn-primary" style="padding:10px 28px;">🔒 Upgrade to Pro</a>
+            {% endif %}
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: ASK AI
+  ══════════════════════════════════════════════════════════════ -->
+  <div id="panel-nlq" class="hidden">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:720px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(124,58,237,.15));font-size:1.2rem;">💬</div>
+        <div><p style="color:#fff;font-weight:600;margin:0;">Ask a Question</p><p style="color:#475569;font-size:12px;margin:0;">Natural language queries powered by Claude</p></div>
+        {% if not is_pro %}<span class="badge-pro" style="margin-left:auto;">PRO</span>{% endif %}
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;">
+        {% for q in example_questions %}
+        <button onclick="document.getElementById('nlq-input').value='{{ q }}'"
+                style="font-size:11px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,0.04);border:1px solid var(--border);color:#64748b;cursor:pointer;transition:.15s;"
+                onmouseover="this.style.color='#a78bfa';this.style.borderColor='rgba(124,58,237,.4)'"
+                onmouseout="this.style.color='#64748b';this.style.borderColor='var(--border)'">{{ q }}</button>
+        {% endfor %}
+      </div>
+      <form hx-post="{% url 'nlq:ask' upload.id %}" hx-target="#nlq-answer" hx-indicator="#nlq-spinner" style="display:flex;gap:8px;margin-bottom:14px;">
+        {% csrf_token %}
+        <input type="text" name="question" id="nlq-input" placeholder="e.g. Which branch has the highest achievement?" class="search-input" style="flex:1;">
+        <button type="submit" class="btn-primary" style="padding:8px 18px;font-size:13px;shrink:0;">
+          <span id="nlq-spinner" class="htmx-indicator"><svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg></span>
+          Ask
+        </button>
+      </form>
+      <div id="nlq-answer"></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       TAB: SHARE
+  ══════════════════════════════════════════════════════════════ -->
+  {% if not is_shared_view %}
+  <div id="panel-share" class="hidden">
+    <div style="background:var(--glass);border:1px solid var(--border);border-radius:var(--radius);padding:28px;max-width:560px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+        <div style="width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(59,130,246,.15);font-size:1.2rem;">🔗</div>
+        <div><p style="color:#fff;font-weight:600;margin:0;">Share Analysis</p><p style="color:#475569;font-size:12px;margin:0;">Read-only link for anyone</p></div>
+      </div>
+      {% include 'analyser/partials/share_panel.html' %}
+    </div>
+  </div>
+  {% endif %}
+
+</div><!-- end main container -->
+
+<!-- ══════════════════════════════════════════════════════════
+     FULLSCREEN OVERLAY
+══════════════════════════════════════════════════════════════ -->
+<div id="nxp-overlay">
+
+  <!-- Header -->
+  <div class="fs-header">
+    <span id="nxp-badge">Present</span>
+    <span id="nxp-counter">1 / 1</span>
+    <div id="nxp-title"></div>
+    <div id="nxp-insight"></div>
+    <button class="fs-btn" id="nxp-autoplay-btn" onclick="fsToggleAutoplay()" title="Autoplay">▶ Auto</button>
+    <button class="fs-close" onclick="closeFullscreen()">✕ <kbd style="font-size:10px;opacity:.5;">Esc</kbd></button>
+  </div>
+
+  <!-- Chart area with nav arrows -->
+  <div id="nxp-chart-area">
+    <button class="fs-nav" id="nxp-prev" onclick="fsNavigate(-1)" title="Previous (← Arrow)">&#8592;</button>
+
+    <!-- Standard chart canvas -->
+    <div id="nxp-canvas-wrap">
+      <img id="nxp-image" alt="Presentation chart" style="display:none;width:100%;height:100%;object-fit:contain;" />
+      <canvas id="nxp-canvas" style="display:none"></canvas>
+    </div>
+
+    <!-- KPI slide (shown instead of canvas for KPI cards) -->
+    <div id="nxp-kpi-slide">
+      <div id="nxp-kpi-value">—</div>
+      <div id="nxp-kpi-label"></div>
+      <div id="nxp-kpi-sparkline" style="display:none"><canvas id="nxp-spark"></canvas></div>
+    </div>
+
+    <button class="fs-nav" id="nxp-next" onclick="fsNavigate(1)" title="Next (→ Arrow)">&#8594;</button>
+
+    <!-- Keyboard hints -->
+    <div id="nxp-kbd-hint">
+      <kbd>←</kbd><kbd>→</kbd> Navigate
+      &nbsp;
+      <kbd>Space</kbd> Autoplay
+      &nbsp;
+      <kbd>Esc</kbd> Exit
+    </div>
+  </div>
+
+  <!-- Footer controls -->
+  <div class="fs-controls">
+    <!-- Dot navigation -->
+    <div class="fs-dot-track" id="nxp-dots"></div>
+
+    <!-- Chart type switcher -->
+    <div style="display:flex;gap:4px;align-items:center;margin-left:auto;">
+      <span style="color:#374151;font-size:10px;margin-right:2px;">Type:</span>
+      {% for val,label in chart_type_choices %}
+      <button class="nxp-type-btn" data-type="{{ val }}" onclick="fsChangeType('{{ val }}')">{{ label }}</button>
+      {% endfor %}
+    </div>
+
+    <!-- Download -->
+    <div style="display:flex;gap:5px;margin-left:12px;">
+      <button class="fs-btn" onclick="fsDownload('png')">↓ PNG</button>
+      <button class="fs-btn" onclick="fsDownload('svg')">↓ SVG</button>
+    </div>
+  </div>
+</div>
+
+<!-- Notes / comments panel -->
+{% if not is_shared_view %}
+<div id="comment-panel" style="display:none;position:fixed;right:0;top:56px;bottom:0;width:280px;background:rgba(10,8,20,.97);border-left:1px solid var(--border);z-index:400;display:none;flex-direction:column;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);">
+    <p style="color:#fff;font-weight:600;font-size:13px;margin:0;">Notes</p>
+    <button onclick="togglePanel('comment-panel')" style="background:none;border:none;color:#475569;cursor:pointer;font-size:16px;">✕</button>
+  </div>
+  <div id="comment-list" style="flex:1;overflow-y:auto;padding:10px;display:flex;flex-direction:column;gap:8px;">
+    <p style="color:#374151;font-size:12px;text-align:center;padding:20px 0;">No notes yet.</p>
+  </div>
+  <div style="padding:10px;border-top:1px solid var(--border);">
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="comment-input" placeholder="Add a note…" class="search-input" style="font-size:12px;flex:1;">
+      <button onclick="sendComment()" class="btn-primary" style="padding:6px 12px;font-size:12px;">→</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Download toast -->
+<div id="dl-toast">✓ Downloaded</div>
+
+<script>
+// ── TABS ────────────────────────────────────────────────────────────────────
+window.showTab = function showTab(name){
+  var ALL=['charts','overview','columns','preview','correlation','ai','nlq','share'];
+  ALL.forEach(function(t){
+    var p=document.getElementById('panel-'+t);
+    var b=document.getElementById('tab-'+t);
+    if(p) p.classList.toggle('hidden', t!==name);
+    if(b) b.classList.toggle('active', t===name);
+  });
+}
+
+// ── SEARCH / FILTER ─────────────────────────────────────────────────────────
+window.filterCharts = function filterCharts(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.chart-card-wrapper').forEach(function(el){
+    var title=el.dataset.title||'';
+    el.style.display=(!q||title.includes(q))?'':'none';
+  });
+}
+window.filterByType = function filterByType(type,btn){
+  document.querySelectorAll('#type-filters .tb-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.chart-card-wrapper').forEach(function(el){
+    if(type==='all'){el.style.display='';return;}
+    var t=el.dataset.type||'';
+    var match=(type==='bar'&&(t==='bar'||t==='horizontal_bar'))||(type==='line'&&(t==='line'||t==='area'))||(type==='doughnut'&&(t==='doughnut'||t==='pie'))||(t===type);
+    el.style.display=match?'':'none';
+  });
+}
+window.filterCols = function filterCols(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.col-row').forEach(function(el){
+    el.style.display=(!q||el.dataset.col.includes(q))?'':'none';
+  });
+}
+window.setLayout = function setLayout(n){
+  document.getElementById('charts-grid').style.gridTemplateColumns='repeat('+n+',minmax(0,1fr))';
+  document.querySelectorAll('#layout-2,#layout-3').forEach(b=>b.classList.remove('active'));
+  document.getElementById('layout-'+n).classList.add('active');
+}
+
+// ── MENUS ────────────────────────────────────────────────────────────────────
+// shared menu handling loaded via chart-actions.js
+
+// ── CHART UPDATE (type / color / size) loaded via chart-mutations.js ───────
+
+// ── FULLSCREEN ───────────────────────────────────────────────────────────────
+</script>
+<script id="chart-mutation-config" type="application/json">{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "csrf": "{{ csrf_token }}",
+  "updateUrlTemplate": "/workspace/{{ upload.id|escapejs }}/charts/__CID__/update/"
+}</script>
+<script src="{% static 'js/analyser/chart-mutations.js' %}"></script>
+<script src="{% static 'js/analyser/result-present-mode.js' %}"></script>
+<script>
+
+// ── PANEL TOGGLE ─────────────────────────────────────────────────────────────
+window.togglePanel = function togglePanel(id){
+  var el=document.getElementById(id);
+  if(!el) return;
+  var isHidden=el.style.display==='none'||el.style.display==='';
+  el.style.display=isHidden?'flex':'none';
+};
+// toggleMenu defined earlier in page
+
+// ── REAL-TIME COLLAB ─────────────────────────────────────────────────────────
+
+</script>
+
+<script id="result-export-config" type="application/json">{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "csrf": "{{ csrf_token }}",
+  "pinUrl": "{% url 'analyser:pin' upload.id %}",
+  "exportPdfUrl": "/export/{{ upload.id|escapejs }}/pdf/queue/",
+  "exportPptxUrl": "/export/{{ upload.id|escapejs }}/pptx/queue/",
+  "exportStatusBase": "/export/status/",
+  "exportHistoryUrl": "/export/{{ upload.id|escapejs }}/history/",
+  "exportRetryBase": "/export/retry/"
+}</script>
+<script src="{% static 'js/analyser/result-export-tools.js' %}"></script>
+<script src="{% static 'js/analyser/export-history-panel.js' %}"></script>
+
+
+{% if not is_shared_view %}
+<script id="result-collab-config" type="application/json">{
+  "uploadId": "{{ upload.id|escapejs }}",
+  "commentsUrl": "/collab/{{ upload.id|escapejs }}/comments/",
+  "presenceUrl": "/collab/{{ upload.id|escapejs }}/presence/"
+}</script>
+<script src="{% static 'js/analyser/result-collaboration.js' %}"></script>
+{% endif %}
+
+<script id="result-page-config" type="application/json">{"uploadId":"{{ upload.id|escapejs }}","tabOrder":["charts","overview","columns","preview","correlation","ai","nlq","share"]}</script>
+<script src="{% static 'js/analyser/result-enhancements.js' %}"></script>
+
+{% endblock %}

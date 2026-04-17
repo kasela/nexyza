@@ -1,0 +1,31 @@
+{% extends 'app_base.html' %}
+{% block title %}Version History — {{ upload.original_name }}{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-6">
+    <div><div class="text-xs text-slate-500 mb-1"><a href="{% url 'analyser:result' upload.id %}" class="hover:text-slate-300">← {{ upload.original_name }}</a></div><h1 class="text-2xl font-bold text-white">Version History</h1></div>
+    <form method="post" action="{% url 'versioning:save' upload.id %}" class="flex gap-2">{% csrf_token %}
+      <input type="text" name="label" placeholder="Snapshot label (optional)" class="input-field text-sm w-56">
+      <button type="submit" class="btn-primary py-2 px-5 text-sm">Save Snapshot</button>
+    </form>
+  </div>
+  <div class="glass rounded-2xl overflow-hidden">
+    <div class="px-5 py-4 border-b border-violet-900/30"><p class="text-white font-semibold">{{ snapshots|length }} snapshot{{ snapshots|length|pluralize }}</p></div>
+    {% if snapshots %}
+    <div class="divide-y divide-slate-800/40">
+      {% for snap in snapshots %}
+      <div class="px-5 py-4 flex items-center gap-4 hover:bg-violet-900/10 transition-colors">
+        <div class="w-10 h-10 rounded-xl bg-violet-900/30 flex items-center justify-center shrink-0"><span class="text-violet-300 font-bold text-sm">v{{ snap.version }}</span></div>
+        <div class="flex-1"><p class="text-white text-sm font-medium">{% if snap.label %}{{ snap.label }}{% else %}Snapshot v{{ snap.version }}{% endif %}</p>
+          <p class="text-slate-500 text-xs">{{ snap.row_count|floatformat:0 }} rows &middot; {{ snap.column_count }} cols &middot; {{ snap.triggered_by }} &middot; {{ snap.created_at|timesince }} ago</p>
+          {% if snap.diff_from_prev and snap.diff_from_prev.rows_old != snap.diff_from_prev.rows_new %}<p class="text-xs {% if snap.diff_from_prev.rows_new > snap.diff_from_prev.rows_old %}text-green-400{% else %}text-amber-400{% endif %}">Rows: {{ snap.diff_from_prev.rows_old }} → {{ snap.diff_from_prev.rows_new }}</p>{% endif %}
+        </div>
+        <div class="flex gap-2">
+          <form method="post" action="{% url 'versioning:restore' upload.id snap.version %}">{% csrf_token %}<button type="submit" class="btn-secondary text-xs py-1.5 px-3" onclick="return confirm('Restore to v{{ snap.version }}?')">Restore</button></form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="py-12 text-center"><p class="text-slate-500 text-sm">No snapshots yet. Click "Save Snapshot" to create one.</p></div>{% endif %}
+  </div>
+</div>{% endblock %}

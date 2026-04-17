@@ -1,0 +1,12 @@
+Your scheduled Nexyza report is ready.
+
+Dataset: {{ upload.original_name }}
+Schedule: {{ schedule.title }}
+Generated: {{ snapshot.created_at }}
+
+Headline: {{ snapshot.summary_json.headline }}
+Opportunity: {{ snapshot.summary_json.opportunity }}
+Risk: {{ snapshot.summary_json.risk }}
+Action: {{ snapshot.summary_json.action }}
+
+Open dashboard: {{ workspace_url }}

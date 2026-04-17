@@ -1,0 +1,11 @@
+<html><body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
+<div style="max-width:640px;margin:0 auto;background:#111827;border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:24px;">
+  <h2 style="margin:0 0 12px;color:#fff;">Scheduled Nexyza report</h2>
+  <p style="color:#94a3b8;">Dataset: {{ upload.original_name }}</p>
+  <p><strong>Headline:</strong> {{ snapshot.summary_json.headline }}</p>
+  <p><strong>Opportunity:</strong> {{ snapshot.summary_json.opportunity }}</p>
+  <p><strong>Risk:</strong> {{ snapshot.summary_json.risk }}</p>
+  <p><strong>Action:</strong> {{ snapshot.summary_json.action }}</p>
+  <p style="margin-top:20px;"><a href="{{ workspace_url }}" style="display:inline-block;background:#7c3aed;color:#fff;text-decoration:none;padding:10px 16px;border-radius:12px;">Open dashboard</a></p>
+</div>
+</body></html>

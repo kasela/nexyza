@@ -1,0 +1,32 @@
+{% extends 'app_base.html' %}
+{% block title %}API Keys — Nexyza{% endblock %}
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between mb-8">
+    <div><h1 class="text-3xl font-bold text-white">API Keys</h1><p class="text-slate-400 text-sm mt-1">Authenticate programmatic access to Nexyza.</p></div>
+    <a href="{% url 'api:create_key' %}" class="btn-primary">+ New Key</a>
+  </div>
+  <div class="glass rounded-2xl overflow-hidden mb-8">
+    {% if keys %}
+    <div class="divide-y divide-slate-800/50">
+      {% for key in keys %}
+      <div class="px-5 py-4 flex items-center gap-4 {% if not key.is_active %}opacity-50{% endif %}">
+        <div class="flex-1"><p class="text-white font-medium text-sm">{{ key.name }}</p><p class="text-slate-500 text-xs font-mono">{{ key.prefix }}… &middot; Created {{ key.created_at|date:"M d, Y" }} {% if key.last_used %}&middot; Last used {{ key.last_used|timesince }} ago{% endif %}</p></div>
+        <span class="text-xs px-2 py-0.5 rounded-full {% if key.is_active %}bg-green-900/30 text-green-400{% else %}bg-slate-800 text-slate-500{% endif %}">{% if key.is_active %}Active{% else %}Revoked{% endif %}</span>
+        {% if key.is_active %}<form method="post" action="{% url 'api:revoke_key' key.id %}" onsubmit="return confirm('Revoke this key?')">{% csrf_token %}<button class="btn-secondary text-xs py-1.5 px-3 text-red-400">Revoke</button></form>{% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}<div class="py-12 text-center"><p class="text-slate-500 text-sm">No API keys yet.</p></div>{% endif %}
+  </div>
+  <div class="glass rounded-2xl p-6">
+    <p class="text-white font-semibold mb-3">API Reference</p>
+    <div class="space-y-3 text-sm font-mono">
+      {% for method, endpoint, desc in api_endpoints %}
+      <div class="flex gap-3 items-start"><span class="text-xs px-2 py-0.5 rounded {% if method == 'GET' %}bg-green-900/30 text-green-400{% elif method == 'POST' %}bg-blue-900/30 text-blue-400{% else %}bg-red-900/30 text-red-400{% endif %} shrink-0 mt-0.5">{{ method }}</span><div><code class="text-violet-300 text-xs">{{ endpoint }}</code><p class="text-slate-500 text-xs mt-0.5 font-sans">{{ desc }}</p></div></div>
+      {% endfor %}
+    </div>
+    <div class="mt-4 p-3 glass-sm rounded-xl"><p class="text-slate-400 text-xs mb-1">Authorization header:</p><code class="text-violet-300 text-xs">Authorization: Bearer dl_your_api_key_here</code></div>
+  </div>
+</div>
+{% endblock %}
