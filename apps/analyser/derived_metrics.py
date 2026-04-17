@@ -212,4 +212,25 @@ def add_derived_metrics(
              (pd.to_numeric(df[revenue_col], errors='coerce') / safe_count).round(2),
              [revenue_col, count_col])
 
+    if profit_col and count_col:
+        safe_count = pd.to_numeric(df[count_col], errors='coerce').replace(0, pd.NA)
+        _add('profit_per_unit', 'Profit per Unit', 'metric',
+             (pd.to_numeric(df[profit_col], errors='coerce') / safe_count).round(2),
+             [profit_col, count_col])
+
+    # ── Lead time (Ship Date − Order Date) ───────────────────────────────────
+    _order_col = _find_best_match(list(df.columns), ['order_date', 'order date', 'date_ordered', 'date_order'])
+    _ship_col  = _find_best_match(list(df.columns), ['ship_date', 'ship date', 'shipped_date', 'delivery_date', 'dispatch_date'])
+    if _order_col and _ship_col and _order_col != _ship_col:
+        try:
+            _order_dt = pd.to_datetime(df[_order_col], errors='coerce', infer_datetime_format=True)
+            _ship_dt  = pd.to_datetime(df[_ship_col],  errors='coerce', infer_datetime_format=True)
+            _lt = (_ship_dt - _order_dt).dt.days
+            if _lt.notna().sum() >= max(3, int(len(df) * 0.4)):
+                _add('lead_time_days', 'Lead Time (Days)', 'metric',
+                     _lt.round(0),
+                     [_order_col, _ship_col])
+        except Exception:
+            pass
+
     return df, derived

@@ -1858,6 +1858,28 @@ def _rule_based(upload) -> list:
                 extra={'derived_metric_key': 'profit_margin_pct'}
             )
 
+        # Revenue per Unit and Profit per Unit rankings
+        if 'value_per_unit' in available_dm:
+            _make(
+                f'{dm_labels.get("value_per_unit", "Revenue per Unit")} by {_dim_label}', 'horizontal_bar',
+                x=dim, y='value_per_unit', agg='mean',
+                color='cyan', size='lg',
+                x_label=dm_labels.get('value_per_unit', 'Revenue per Unit'),
+                y_label=dim,
+                insight=f'Average revenue generated per unit sold — shows pricing efficiency by {_dim_label.lower()}',
+                extra={'derived_metric_key': 'value_per_unit'}
+            )
+        if 'profit_per_unit' in available_dm:
+            _make(
+                f'{dm_labels.get("profit_per_unit", "Profit per Unit")} by {_dim_label}', 'horizontal_bar',
+                x=dim, y='profit_per_unit', agg='mean',
+                color='emerald', size='lg',
+                x_label=dm_labels.get('profit_per_unit', 'Profit per Unit'),
+                y_label=dim,
+                insight=f'Profit earned per unit — highlights most lucrative {_dim_label.lower()} segments',
+                extra={'derived_metric_key': 'profit_per_unit'}
+            )
+
         # Cost efficiency (actual vs purchasing ratio)
         if 'actual_to_cost_ratio' in available_dm and role_purchasing:
             _make(
@@ -1925,10 +1947,25 @@ def _rule_based(upload) -> list:
               insight=f'Avg attainment {kpi_summary.get("best_achievement_pct", "")}% best, {kpi_summary.get("worst_achievement_pct", "")}% worst',
               extra={'derived_metric_key': 'achievement_pct'})
     if 'profit_margin_pct' in available_dm:
+        _margin_insight = 'Average profit margin across all records'
+        if kpi_summary.get('highest_margin_entity'):
+            _margin_insight = f"Highest margin: {kpi_summary['highest_margin_entity']} ({kpi_summary.get('highest_margin_pct', '')}%)"
         _make('Profit Margin %', 'kpi', y='profit_margin_pct', agg='mean',
               color='emerald', size='sm',
-              insight='Average profit margin across all records',
+              insight=_margin_insight,
               extra={'derived_metric_key': 'profit_margin_pct'})
+    if 'value_per_unit' in available_dm:
+        _vu_label = dm_labels.get('value_per_unit', 'Revenue per Unit')
+        _make(_vu_label, 'kpi', y='value_per_unit', agg='mean',
+              color='cyan', size='sm',
+              insight='Average revenue generated per unit sold — pricing efficiency signal',
+              extra={'derived_metric_key': 'value_per_unit'})
+    if 'profit_per_unit' in available_dm:
+        _pu_label = dm_labels.get('profit_per_unit', 'Profit per Unit')
+        _make(_pu_label, 'kpi', y='profit_per_unit', agg='mean',
+              color='amber', size='sm',
+              insight='Average profit per unit sold',
+              extra={'derived_metric_key': 'profit_per_unit'})
     if 'variance_to_target' in available_dm:
         _make('Variance to Target', 'kpi', y='variance_to_target', agg='sum',
               color='rose', size='sm',
