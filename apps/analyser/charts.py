@@ -52,6 +52,17 @@ def _sf(v):
         return None
 
 
+def _fmt_hist_edge(v) -> str:
+    """Format histogram bin edge avoiding scientific notation for large numbers."""
+    try:
+        f = float(v)
+        if abs(f) >= 1_000:
+            return f"{f:,.0f}"
+        return f"{f:.3g}"
+    except Exception:
+        return str(v)
+
+
 # ── Semantic metadata helpers ──────────────────────────────────────────────────
 
 def _get_col_info(upload, col_name: str) -> dict:
@@ -1136,7 +1147,7 @@ def _histogram(upload, chart) -> dict:
         counts, edges = pd.cut(s, bins=n_bins, retbins=True)
         freq = counts.value_counts(sort=False)
         return {
-            'labels': [f"{edges[i]:.3g}–{edges[i+1]:.3g}" for i in range(len(edges)-1)],
+            'labels': [f"{_fmt_hist_edge(edges[i])}–{_fmt_hist_edge(edges[i+1])}" for i in range(len(edges)-1)],
             'datasets': [{
                 'label': col, 'data': [int(v) for v in freq.values],
                 'backgroundColor': _palette(chart.color, 0.7)[0],

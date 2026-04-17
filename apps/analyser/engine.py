@@ -10,6 +10,17 @@ from pathlib import Path
 from .schema_normalization_engine import build_schema_metadata, normalize_dataframe
 
 
+def _fmt_hist_edge(v) -> str:
+    """Format a histogram bin edge with commas for large numbers, avoiding scientific notation."""
+    try:
+        f = float(v)
+        if abs(f) >= 1_000:
+            return f"{f:,.0f}"
+        return f"{f:.3g}"
+    except Exception:
+        return str(v)
+
+
 def _safe_preview(v):
     """Make a preview cell JSON-safe — convert any non-primitive to str."""
     if v is None or v == '':
@@ -150,7 +161,7 @@ def analyse(filepath: str, file_type: str, sheet_name=None) -> dict:
                     counts, edges = pd.cut(clean, bins=min(10, len(clean.unique())), retbins=True)
                     hist = counts.value_counts(sort=False)
                     col_info['histogram'] = {
-                        'labels': [f"{_safe(edges[i]):.2g}–{_safe(edges[i+1]):.2g}" for i in range(len(edges)-1)],
+                        'labels': [f"{_fmt_hist_edge(_safe(edges[i]))}–{_fmt_hist_edge(_safe(edges[i+1]))}" for i in range(len(edges)-1)],
                         'values': [int(v) for v in hist.values],
                     }
                 else:
@@ -227,7 +238,7 @@ def analyse(filepath: str, file_type: str, sheet_name=None) -> dict:
                             counts, edges = pd.cut(ns, bins=min(10, ns.nunique()), retbins=True)
                             hist = counts.value_counts(sort=False)
                             col_info['histogram'] = {
-                                'labels': [f"{_safe(edges[i]):.2g}\u2013{_safe(edges[i+1]):.2g}"
+                                'labels': [f"{_fmt_hist_edge(_safe(edges[i]))}\u2013{_fmt_hist_edge(_safe(edges[i+1]))}"
                                            for i in range(len(edges)-1)],
                                 'values': [int(v) for v in hist.values],
                             }
