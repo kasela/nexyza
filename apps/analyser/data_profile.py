@@ -135,10 +135,10 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
 
     target_columns = [
         c["name"] for c in column_profiles
-        if "target" in c["hints"] or any(k in c["canonical_name"] for k in ["budget", "plan"])
+        if ("target" in c["hints"] or any(k in c["canonical_name"] for k in ["budget", "plan"])) and c["role"] == "measure"
     ]
-    forecast_columns = [c["name"] for c in column_profiles if "forecast" in c["hints"]]
-    actual_columns = [c["name"] for c in column_profiles if "actual" in c["hints"]]
+    forecast_columns = [c["name"] for c in column_profiles if "forecast" in c["hints"] and c["role"] == "measure"]
+    actual_columns = [c["name"] for c in column_profiles if "actual" in c["hints"] and c["role"] == "measure"]
 
     profile = {
         "filename": filename,
@@ -175,4 +175,13 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         profile["quality_flags"].append("duplicate_column_names")
     if rows < 12:
         profile["quality_flags"].append("small_dataset")
+
+    # Detect Nexyza stats-export CSVs re-uploaded as datasets.
+    # These have canonical column names "column", "nulls", "unique" which only
+    # appear in the platform's own column-profile export format.
+    _STATS_EXPORT_SIGNATURE = {"column", "nulls", "unique"}
+    canon_name_set = {c["canonical_name"] for c in column_profiles}
+    if _STATS_EXPORT_SIGNATURE.issubset(canon_name_set):
+        profile["quality_flags"].append("stats_export_detected")
+
     return profile

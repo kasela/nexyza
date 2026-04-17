@@ -204,6 +204,7 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
         }
 
     derived_names: List[str] = []
+    _is_stats_export = any('stats_export' in f for f in (profile.get('quality_flags') or []))
 
     for rec in source_records:
         item: Dict[str, Any] = {}
@@ -255,27 +256,29 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
                 metric_types['stock_turnover'] = 'ratio'
                 derived_names.append('stock_turnover')
 
-        # generic pairwise fallback for the first 3 measures
-        pair_pool = measures[:3]
-        for idx, left in enumerate(pair_pool):
-            for right in pair_pool[idx + 1:]:
-                left_v = measure_values.get(left)
-                right_v = measure_values.get(right)
-                if left_v is None or right_v is None:
-                    continue
-                diff_key = f'{_canon(left)}_minus_{_canon(right)}'
-                if diff_key not in item:
-                    item[diff_key] = _safe_round(left_v - right_v, 2)
-                    metric_labels.setdefault(diff_key, f'{left} minus {right}')
-                    metric_types[diff_key] = 'metric'
-                    derived_names.append(diff_key)
-                if right_v not in (None, 0):
-                    ratio_key = f'{_canon(left)}_to_{_canon(right)}_ratio'
-                    if ratio_key not in item:
-                        item[ratio_key] = _safe_round(left_v / right_v, 4)
-                        metric_labels.setdefault(ratio_key, f'{left} to {right} Ratio')
-                        metric_types[ratio_key] = 'ratio'
-                        derived_names.append(ratio_key)
+        # generic pairwise fallback — skip for Nexyza stats-export CSVs
+        # to avoid nonsensical "Nulls % minus Unique" derived metrics.
+        if not _is_stats_export:
+            pair_pool = measures[:3]
+            for idx, left in enumerate(pair_pool):
+                for right in pair_pool[idx + 1:]:
+                    left_v = measure_values.get(left)
+                    right_v = measure_values.get(right)
+                    if left_v is None or right_v is None:
+                        continue
+                    diff_key = f'{_canon(left)}_minus_{_canon(right)}'
+                    if diff_key not in item:
+                        item[diff_key] = _safe_round(left_v - right_v, 2)
+                        metric_labels.setdefault(diff_key, f'{left} minus {right}')
+                        metric_types[diff_key] = 'metric'
+                        derived_names.append(diff_key)
+                    if right_v not in (None, 0):
+                        ratio_key = f'{_canon(left)}_to_{_canon(right)}_ratio'
+                        if ratio_key not in item:
+                            item[ratio_key] = _safe_round(left_v / right_v, 4)
+                            metric_labels.setdefault(ratio_key, f'{left} to {right} Ratio')
+                            metric_types[ratio_key] = 'ratio'
+                            derived_names.append(ratio_key)
 
         records.append(item)
 
