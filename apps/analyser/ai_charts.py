@@ -28,10 +28,12 @@ FALLBACK_SYSTEM_PROMPT = """Data viz expert. Analyse sample data + metadata. Out
 
 COLUMN TYPES: year=time axis only | month=time axis, sort Jan-Dec | ratio=×100 show as % |
 percentage=show as % | metric/currency=numeric KPI | count=integer KPI |
-category≤30=dimension | high_card>30=horizontal_bar top20 only | id=never use as axis
+category≤30=dimension | high_card>30=horizontal_bar top20 only |
+identifier=row key/ID column — NEVER use as y_axis, KPI, or measure. Skip entirely.
 
 RULES (strict):
 - year/month: NEVER as KPI or histogram — time axis only
+- identifier: NEVER as y_axis, KPI value, or measure — identifiers (Order ID, Customer ID, etc.) are row keys, not metrics
 - high_card: horizontal_bar top 20 max, never y-axis
 - text/category as y-axis: FORBIDDEN — use a NUMERIC column as y-axis
 - For COUNT distributions (gender count, job type count): set x_axis=category_col, y_axis=ANY_numeric_col, aggregation=count. NEVER set y_axis same as x_axis.

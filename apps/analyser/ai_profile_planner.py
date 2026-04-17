@@ -68,6 +68,7 @@ Dataset profile for {profile.get('filename') or 'uploaded file'}
 Rows: {rows}
 Columns: {cols}
 Measures: {', '.join(profile.get('measures') or [])}
+Identifiers (NEVER use as axis or KPI): {', '.join(profile.get('identifier_columns') or []) or 'none'}
 Dimensions: {', '.join(profile.get('dimensions') or [])}
 Time columns: {', '.join(profile.get('time_columns') or [])}
 Target columns: {', '.join(profile.get('target_columns') or [])}
