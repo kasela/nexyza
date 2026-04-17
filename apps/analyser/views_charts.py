@@ -19,7 +19,7 @@ from .chart_services import (
     update_chart_from_post,
 )
 from .engine import load_dataframe
-from .executive_summary import build_executive_summary
+from .executive_summary import build_executive_summary, build_kpi_scorecard
 from .decision_intelligence_engine import build_decision_dashboard
 from .insight_explanation_engine import attach_explanations
 from .metric_type_rendering_engine import attach_metric_rendering
@@ -136,6 +136,7 @@ def chart_gallery(request, pk):
         'charts': chart_list,
         'columns': cols,
         'executive_summary': executive_summary,
+        'kpi_scorecard': build_kpi_scorecard(analysis),
         'narrative_dashboard': narrative_dashboard,
         'dashboard_mode': dashboard_mode,
         'all_columns':      [c['name'] for c in cols],
