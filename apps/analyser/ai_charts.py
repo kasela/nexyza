@@ -41,7 +41,8 @@ RULES (strict):
 - unique_count=1: If a dimension column has unique_count=1 in the metadata, NEVER use it as x_axis or group_by in any chart — it has no analytical value.
 - Titles: always use the exact column names from the data (e.g. "Achievement by Regional Manager"), never invent role labels or add suffixes like "Performance Ranking". A column named "Regional Manager" may contain category/tier values — use the column name as-is in the title.
 - If a dimension column has ≤8 unique values (e.g. Gold/Silver/Bronze tier codes), use doughnut or bar, NOT horizontal_bar with "ranking" in the title.
-- When both actual and target columns exist: always include at least one variance_bar chart comparing actual vs target by the primary dimension, and one line chart showing both actual and target over time (use extra_measures to add target as a second series).
+- When both actual and target columns exist: always include at least one variance_bar chart comparing actual vs target by the primary dimension, and one line chart showing BOTH actual and target over time — the line trend MUST use extra_measures to add the target as a second series (never show actual-only trend when target exists).
+- Geographic/hierarchical dimensions (Province, Region, Geographical Area, Cluster, Territory, Zone, Area) — when target exists, use variance_bar NOT doughnut/pie. Reserve doughnut/pie only for composition breakdowns where no target comparison is meaningful.
 
 CHART TYPES: kpi(3-5 cards) | line(time+metric,size=full) | horizontal_bar(>12 cats,top20) |
 doughnut(2-8 cats) | bar(≤12 cats,optional group_by) | scatter(2 numerics) |
@@ -348,7 +349,7 @@ def ai_recommend_charts(analysis_result: dict, filename: str, user=None) -> list
         logger.info(f"AI chart planning unavailable ({ai_context.get('reason')}); using heuristic chart plan")
 
     validated, debug = validate_chart_configs(configs, profile)
-    fallback_target = 10
+    fallback_target = 12
     if len(validated) < fallback_target:
         fallback = heuristic_chart_plan(profile, target_count=fallback_target)
         fallback_validated, fallback_debug = validate_chart_configs(fallback, profile)

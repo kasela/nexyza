@@ -455,7 +455,7 @@ function _renderPreviewNow(raw,type){
     return;
   }
   kpiEl.style.display='none'; canvas.style.display='block'; if(msgEl)msgEl.style.display='none';
-  if(!raw||!raw.labels||!raw.labels.length){if(msgEl)msgEl.style.display='flex';canvas.style.display='none';return;}
+  if(!raw||(type!=='scatter'&&(!raw.labels||!raw.labels.length))){if(msgEl)msgEl.style.display='flex';canvas.style.display='none';return;}
 
   if(_modalChart){_modalChart.destroy();_modalChart=null;}
   var isH=type==='horizontal_bar';
@@ -734,7 +734,7 @@ function _renderFullscreen(raw, type){
     return;
   }
   kpiEl.style.display='none'; canvas.style.display='block';
-  if(!raw.labels||!raw.labels.length) return;
+  if(type!=='scatter'&&(!raw.labels||!raw.labels.length)) return;
   var isH=type==='horizontal_bar';
   var jsType={area:'line',histogram:'bar',horizontal_bar:'bar'}[type]||type;
   _fsChart=new Chart(canvas,{

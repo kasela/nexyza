@@ -112,7 +112,7 @@
         (function(){
           var raw={{ d|jsonify|safe }};
           raw.render_meta={{ rm|default:"{}"|jsonify|safe }};
-          if(!raw||!raw.labels||!raw.labels.length)return;
+          if(!raw||(raw.chart_type!=='scatter'&&(!raw.labels||!raw.labels.length)))return;
           var ctype=raw.chart_type||'bar',isH=!!raw.is_horizontal;
           var jsType={area:'line',histogram:'bar',horizontal_bar:'bar',waterfall:'bar',bullet:'bar',progress_ring:'doughnut'}[ctype]||ctype;
           var yLbl=raw.y_label||'',xLbl=raw.x_label||'';
@@ -137,6 +137,7 @@
             if(xLbl)xA.title={display:true,text:xLbl,color:'#475569',font:{size:9}};
             if(yLbl)yA.title={display:true,text:yLbl,color:'#475569',font:{size:9}};
             scales=isH?{x:yA,y:xA}:{x:xA,y:yA};
+            if(ctype==='scatter'){xA.ticks.callback=function(v){return typeof v==='number'?formatMetricValue(v,renderMeta.formatter,renderMeta.decimals):v;};}
           }
           /* Build dual-axis scales if needed */
           if(raw.has_dual_axis&&raw.y2_label&&!isH){
