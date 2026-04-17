@@ -122,10 +122,11 @@
             if(typeof v!=='number' || Number.isNaN(v)) return v;
             if(formatter==='percent' || formatter==='percent_delta') return v.toFixed(decimals)+'%';
             if(formatter==='integer' || formatter==='integer_delta') return Math.round(v).toLocaleString();
+            if(formatter==='number' || formatter==='number_delta') return v.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:decimals});
             if(Math.abs(v)>=1e9) return (v/1e9).toFixed(decimals)+'B';
             if(Math.abs(v)>=1e6) return (v/1e6).toFixed(decimals)+'M';
             if(Math.abs(v)>=1e3) return (v/1e3).toFixed(decimals)+'K';
-            return v.toFixed(decimals);
+            return v.toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:decimals});
           }
           Chart.defaults.color='#94a3b8';
           Chart.defaults.font={family:"'DM Sans',system-ui",size:10};
