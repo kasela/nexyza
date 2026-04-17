@@ -46,16 +46,16 @@ def detect_chart_pack(profile: Dict[str, Any]) -> str:
 
 def suggested_groupings(profile: Dict[str, Any]) -> List[str]:
     cls = _classification(profile)
-    dims = _safe_list(profile.get('dimensions'))
+    col_lookup = {c['name']: c for c in (profile.get('column_profiles') or [])}
+    dims = [d for d in _safe_list(profile.get('dimensions')) if (col_lookup.get(d, {}).get('unique_count') or 2) > 1]
     primary = str(cls.get('primary_dimension') or '').strip()
     preferred_order = [
         primary,
-        'Branch',
-        'Regional Manager',
         'Category',
         'Province',
         'Geographical Area',
         'Cluster',
+        'Regional Manager',
     ]
     ordered: List[str] = []
     for item in preferred_order:

@@ -110,7 +110,7 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         })
 
     measures = [c["name"] for c in column_profiles if c["role"] == "measure"]
-    dimensions = [c["name"] for c in column_profiles if c["role"] == "dimension"]
+    dimensions = [c["name"] for c in column_profiles if c["role"] == "dimension" and c.get("unique_count", 2) > 1]
     time_columns = [c["name"] for c in column_profiles if c["role"] == "time"]
     combined_date_names = [c.get("display_name") or c.get("name") for c in combined_dates if c.get("display_name") or c.get("name")]
 
@@ -139,6 +139,10 @@ def profile_dataset(analysis_result: Dict[str, Any], filename: str = "") -> Dict
         "preview_columns": ((analysis_result.get("preview") or {}).get("columns") or []),
         "quality_flags": [],
     }
+
+    single_value_dims = [c["name"] for c in column_profiles if c["role"] == "dimension" and c.get("unique_count", 2) <= 1]
+    if single_value_dims:
+        profile["quality_flags"].append(f"single_value_dimensions_excluded:{','.join(single_value_dims)}")
 
     if not measures:
         profile["quality_flags"].append("no_measures_detected")

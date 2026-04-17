@@ -287,12 +287,28 @@ def build_decision_chart_plan(profile: Dict[str, Any], target_count: int = 8) ->
         if alt_dim and len(plan) < target_count:
             metric = derived_available[0] if derived_available else actual
             if metric:
-                # Use the actual column name in the title to avoid misleading role-based labels
                 agg_fn = 'mean' if metric in derived_labels and derived.get('semantic_types', {}).get(metric) == 'ratio' else 'sum'
-                # Low-cardinality dimension (e.g. tier codes: Gold/Silver/Bronze) → doughnut
                 alt_dim_col = next((c for c in profile.get('column_profiles') or [] if c.get('name') == alt_dim), {})
                 alt_dim_uniq = int(alt_dim_col.get('unique_count') or 99)
-                if 2 <= alt_dim_uniq <= 6:
+                # When target exists, prefer variance_bar so the dimension shows attainment, not just proportion
+                if target and actual and 2 <= alt_dim_uniq <= 12:
+                    add(
+                        title=f"Achievement vs Target by {alt_dim}",
+                        chart_type='variance_bar',
+                        x_axis=alt_dim,
+                        y_axis=actual,
+                        aggregation='sum',
+                        group_by='',
+                        color='rose',
+                        size='md',
+                        x_label=alt_dim,
+                        y_label=title_for(actual),
+                        insight=f'Which {alt_dim.lower()} segments are ahead or behind their target.',
+                        is_time_series=False,
+                        combined_date_key='',
+                        target_column=target,
+                    )
+                elif 2 <= alt_dim_uniq <= 6:
                     add(
                         title=f"{title_for(metric)} by {alt_dim}",
                         chart_type='doughnut',
