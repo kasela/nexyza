@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 import math
 import re
@@ -191,6 +192,7 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
     target = roles.get('target_column')
     cost = roles.get('cost_column')
     profit = roles.get('profit_column')
+    volume = roles.get('volume_column')
     opening = roles.get('opening_stock_column')
     closing = roles.get('closing_stock_column')
 
@@ -212,6 +214,7 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
         (actual and target) or
         (actual and cost) or
         (actual and profit) or
+        (actual and volume) or
         (opening and closing)
     )
 
@@ -249,6 +252,18 @@ def derive_generic_metrics(profile: Dict[str, Any], roles: Dict[str, Optional[st
             metric_labels.setdefault('profit_margin_pct', 'Profit Margin %')
             metric_types['profit_margin_pct'] = 'ratio'
             derived_names.append('profit_margin_pct')
+
+        # Per-unit efficiency metrics — only meaningful when a volume/quantity column exists
+        if volume and actual and measure_values.get(volume) not in (None, 0) and measure_values.get(actual) is not None:
+            item['value_per_unit'] = _safe_round(measure_values[actual] / measure_values[volume], 4)
+            metric_labels.setdefault('value_per_unit', f'{actual} per Unit')
+            metric_types['value_per_unit'] = 'ratio'
+            derived_names.append('value_per_unit')
+        if volume and profit and measure_values.get(volume) not in (None, 0) and measure_values.get(profit) is not None:
+            item['profit_per_unit'] = _safe_round(measure_values[profit] / measure_values[volume], 4)
+            metric_labels.setdefault('profit_per_unit', f'{profit} per Unit')
+            metric_types['profit_per_unit'] = 'ratio'
+            derived_names.append('profit_per_unit')
 
         if opening and closing and measure_values.get(opening) is not None and measure_values.get(closing) is not None:
             avg_stock = (measure_values[opening] + measure_values[closing]) / 2 if (measure_values[opening] + measure_values[closing]) != 0 else None
@@ -444,6 +459,62 @@ def build_universal_business_insights(profile: Dict[str, Any], roles: Dict[str, 
         summary = (derived.get('summaries') or {}).get(metric) or {}
         if summary.get('mean') is not None:
             insights['narrative_points'].append(f"{summary.get('label', labels.get(metric, metric))} average is {summary['mean']}.")
+
+    # Per-dimension revenue and margin insights from preview records
+    if records and actual:
+        _dim_rev: Dict[str, float] = defaultdict(float)
+        _dim_margin: Dict[str, List[float]] = defaultdict(list)
+        for r in records:
+            dv = r.get('dimension_value')
+            if not dv:
+                continue
+            _dim_rev[dv] += r.get(f'{_canon(actual)}_value') or 0
+            if r.get('profit_margin_pct') is not None:
+                _dim_margin[dv].append(r['profit_margin_pct'])
+        if _dim_rev:
+            top_rev = max(_dim_rev, key=_dim_rev.get)  # type: ignore[arg-type]
+            low_rev = min(_dim_rev, key=_dim_rev.get)  # type: ignore[arg-type]
+            insights['kpi_summary']['top_revenue_entity'] = top_rev
+            insights['kpi_summary']['bottom_revenue_entity'] = low_rev
+            insights['narrative_points'].append(
+                f"Top revenue contributor: {top_rev}. Lowest: {low_rev}."
+            )
+        if _dim_margin:
+            _avg_margins: Dict[str, float] = {d: sum(m) / len(m) for d, m in _dim_margin.items()}
+            top_m = max(_avg_margins, key=_avg_margins.get)  # type: ignore[arg-type]
+            low_m = min(_avg_margins, key=_avg_margins.get)  # type: ignore[arg-type]
+            insights['kpi_summary']['highest_margin_entity'] = top_m
+            insights['kpi_summary']['highest_margin_pct'] = _safe_round(_avg_margins[top_m], 1)
+            insights['kpi_summary']['lowest_margin_entity'] = low_m
+            insights['kpi_summary']['lowest_margin_pct'] = _safe_round(_avg_margins[low_m], 1)
+            insights['narrative_points'].append(
+                f"Highest margin: {top_m} ({_safe_round(_avg_margins[top_m], 1)}%). "
+                f"Lowest margin: {low_m} ({_safe_round(_avg_margins[low_m], 1)}%)."
+            )
+
+    # Correlation-based insight from the pre-computed correlation matrix
+    corr_matrix = (profile.get('correlation') or {}).get('matrix') or {}
+    if corr_matrix and isinstance(corr_matrix, dict):
+        best_pair: Optional[tuple] = None
+        best_val = 0.0
+        for c1, row in corr_matrix.items():
+            if not isinstance(row, dict):
+                continue
+            for c2, val in row.items():
+                try:
+                    fval = float(val)
+                except (TypeError, ValueError):
+                    continue
+                if c1 != c2 and abs(fval) > abs(best_val) and abs(fval) < 1.0:
+                    best_pair = (c1, c2)
+                    best_val = fval
+        if best_pair and abs(best_val) >= 0.80:
+            c1, c2 = best_pair
+            direction = "positively" if best_val > 0 else "negatively"
+            insights['narrative_points'].append(
+                f"{c1} and {c2} are strongly {direction} correlated "
+                f"(r={best_val:.2f}) — indicating a {direction[:-2]} linked performance driver."
+            )
 
     return insights
 
