@@ -38,8 +38,10 @@ RULES (strict):
 - ratio: ×100, label "Col (%)"
 - Month+Year both exist: combined_date_key="Month / Year"
 - No duplicate chart concepts
+- unique_count=1: If a dimension column has unique_count=1 in the metadata, NEVER use it as x_axis or group_by in any chart — it has no analytical value.
 - Titles: always use the exact column names from the data (e.g. "Achievement by Regional Manager"), never invent role labels or add suffixes like "Performance Ranking". A column named "Regional Manager" may contain category/tier values — use the column name as-is in the title.
 - If a dimension column has ≤8 unique values (e.g. Gold/Silver/Bronze tier codes), use doughnut or bar, NOT horizontal_bar with "ranking" in the title.
+- When both actual and target columns exist: always include at least one variance_bar chart comparing actual vs target by the primary dimension, and one line chart showing both actual and target over time (use extra_measures to add target as a second series).
 
 CHART TYPES: kpi(3-5 cards) | line(time+metric,size=full) | horizontal_bar(>12 cats,top20) |
 doughnut(2-8 cats) | bar(≤12 cats,optional group_by) | scatter(2 numerics) |
