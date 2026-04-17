@@ -362,8 +362,19 @@ def _time_series(upload, chart, combo_key: str) -> dict:
                 df_work[y] = pd.to_numeric(df_work[y], errors='coerce')
                 df_work = df_work.dropna(subset=[y])
                 agg_fn = {'mean':'mean','sum':'sum','count':'count','min':'min','max':'max'}.get(agg,'mean')
-                # Include Year if present for proper sorting
+                # If there's an explicit Year column, use it; otherwise try to
+                # parse combo_key as dates and derive year+month for monthly aggregation.
                 year_col = next((c for c in df.columns if c.lower() == 'year'), None)
+                if not year_col:
+                    _dt_raw = pd.to_datetime(df_work[combo_key], errors='coerce', infer_datetime_format=True)
+                    if _dt_raw.notna().sum() / max(len(df_work), 1) >= 0.4:
+                        df_work['_yr'] = pd.to_numeric(_dt_raw.dt.year, errors='coerce')
+                        df_work['_mo'] = _dt_raw.dt.strftime('%B')
+                        _dt_raw2 = pd.to_datetime(df[combo_key], errors='coerce', infer_datetime_format=True)
+                        df['_yr'] = pd.to_numeric(_dt_raw2.dt.year, errors='coerce')
+                        df['_mo'] = _dt_raw2.dt.strftime('%B')
+                        year_col = '_yr'
+                        combo_key = '_mo'
                 if year_col:
                     df_work[year_col] = pd.to_numeric(df_work[year_col], errors='coerce')
                     grouped = df_work.groupby([year_col, combo_key])[y].agg(agg_fn).reset_index()
@@ -923,12 +934,31 @@ def _standard(df, upload, chart) -> dict:
         y_lbl  = cjson.get('y_label') or (f'{y} (%)' if _is_ratio(upload, y) else y)
         x_lbl  = cjson.get('x_label') or x
 
-        # Scatter
+        # Scatter — with optional color-by-group
         if ctype == 'scatter':
             df_w[x] = force_numeric(df_w[x])
             df_w[y] = force_numeric(df_w[y])
             df_w    = df_w.dropna(subset=[x, y])
             mx      = _multiplier(upload, x)
+            if group and group in df_w.columns:
+                grp_vals = df_w[group].dropna().unique().tolist()[:8]
+                colors   = _palette('multi', 0.65, len(grp_vals))
+                datasets = []
+                for gi, gv in enumerate(grp_vals):
+                    rows = df_w[df_w[group] == gv].head(200)
+                    pts  = [{'x': round(float(r[x]) * mx, 4), 'y': round(float(r[y]) * mult, 4)}
+                            for _, r in rows[[x, y]].iterrows()
+                            if pd.notna(r[x]) and pd.notna(r[y])]
+                    datasets.append({
+                        'label':           str(gv),
+                        'data':            pts,
+                        'backgroundColor': colors[gi % len(colors)],
+                        'borderColor':     colors[gi % len(colors)],
+                        'pointRadius':     5,
+                        'pointHoverRadius': 8,
+                    })
+                return {'chart_type': 'scatter', 'datasets': datasets,
+                        'x_label': x_lbl, 'y_label': y_lbl}
             return {
                 'chart_type': 'scatter',
                 'datasets': [{
